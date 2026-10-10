@@ -1,0 +1,137 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../site.config';
+import { url } from '../lib/posts';
+
+const action = SITE.formspreeId ? `https://formspree.io/f/${SITE.formspreeId}` : '';
+const ready = Boolean(action);
+---
+<Base title="お問い合わせ" description="ご感想やご連絡はこちらのフォームからどうぞ。">
+  <div class="wrap narrow">
+    <header class="page-head">
+      <h1>お問い合わせ</h1>
+      <p>ご感想、記事の間違いのご指摘、そのほかのご連絡はこちらからどうぞ。返信は数日かかることがあります。</p>
+    </header>
+
+    {!ready && (
+      <p class="notice" role="status">フォームは準備中です。もうしばらくお待ちください。</p>
+    )}
+
+    <form class="form" id="contact-form" method="POST" action={action || undefined} data-ready={ready ? 'true' : 'false'}>
+      <fieldset disabled={!ready}>
+        <legend class="visually-hidden">お問い合わせ内容</legend>
+
+        <div class="field">
+          <label for="f-name">お名前 <span class="opt">任意</span></label>
+          <input id="f-name" name="name" type="text" autocomplete="name" maxlength="100" />
+        </div>
+
+        <div class="field">
+          <label for="f-email">メールアドレス <span class="req">必須</span></label>
+          <input id="f-email" name="email" type="email" autocomplete="email" required maxlength="200" />
+          <p class="hint">返信が必要な場合に使います。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-message">内容 <span class="req">必須</span></label>
+          <textarea id="f-message" name="message" rows="7" required minlength="5" maxlength="5000"></textarea>
+        </div>
+
+        <!-- スパム対策: 人には見えない入力欄。ここに何か入っていたら Formspree が破棄する -->
+        <div class="hp" aria-hidden="true">
+          <label for="f-gotcha">この欄は空のままにしてください</label>
+          <input id="f-gotcha" type="text" name="_gotcha" tabindex="-1" autocomplete="off" />
+        </div>
+        <input type="hidden" name="_subject" value={`【${SITE.name}】お問い合わせ`} />
+
+        <div class="field field--check">
+          <input id="f-agree" name="agree" type="checkbox" required />
+          <label for="f-agree"><a href={url('privacy/')}>プライバシーポリシー</a>に同意します</label>
+        </div>
+
+        <button class="button" type="submit">送信する</button>
+        <p class="status" id="form-status" role="status" aria-live="polite"></p>
+      </fieldset>
+    </form>
+  </div>
+</Base>
+
+<style>
+  .narrow { max-width: calc(var(--read) + var(--gutter) * 2); }
+  .notice {
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius);
+    border: 1px dashed var(--warm);
+    background: color-mix(in srgb, var(--warm) 10%, var(--surface));
+    margin: 0 0 1.5rem;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  fieldset:disabled { opacity: 0.55; }
+  .field { display: grid; gap: 0.35rem; margin-bottom: 1.25rem; }
+  label { font-weight: 600; font-size: 0.95rem; }
+  .req, .opt {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    margin-left: 0.3rem;
+    vertical-align: 0.1em;
+  }
+  .req { background: var(--warm); color: #fff; }
+  .opt { background: var(--line); color: var(--muted); }
+  input[type='text'], input[type='email'], textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 16px; /* iPhone で入力時に拡大されないように */
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.65rem 0.8rem;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+  textarea { resize: vertical; min-height: 10rem; line-height: 1.7; }
+  .hint { margin: 0; font-size: 0.8rem; color: var(--muted); }
+  .field--check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .field--check input { width: 1.25rem; height: 1.25rem; accent-color: var(--accent); }
+  .field--check label { font-weight: 400; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .status { min-height: 1.5em; margin: 1rem 0 0; font-weight: 600; }
+  .status[data-kind='ok'] { color: var(--accent); }
+  .status[data-kind='error'] { color: #c0392b; }
+</style>
+
+<script>
+  // JS が使えるときはページ遷移せずに送る。使えないときは普通のフォーム送信になる。
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
+  const status = document.getElementById('form-status');
+  if (form && status && form.dataset.ready === 'true') {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      button.disabled = true;
+      status.dataset.kind = '';
+      status.textContent = '送信しています…';
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        form.reset();
+        status.dataset.kind = 'ok';
+        status.textContent = '送信しました。ありがとうございます。';
+      } catch {
+        status.dataset.kind = 'error';
+        status.textContent = '送信できませんでした。時間をおいてもう一度お試しください。';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+</script>

@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostGrid from '../../components/PostGrid.astro';
+import ArchiveNav from '../../components/ArchiveNav.astro';
+import { getPosts } from '../../lib/posts';
+
+const posts = await getPosts();
+---
+<Base title="記事一覧" description="すべての記事を新しい順に並べています。">
+  <div class="wrap">
+    <header class="page-head">
+      <h1>記事一覧</h1>
+      <p>新しい順に {posts.length} 本。</p>
+    </header>
+    <ArchiveNav posts={posts} current="all" />
+    <PostGrid posts={posts} />
+  </div>
+</Base>

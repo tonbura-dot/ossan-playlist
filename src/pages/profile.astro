@@ -1,0 +1,65 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../site.config';
+import { url } from '../lib/posts';
+---
+<Base title="プロフィール" description={`${SITE.author}の自己紹介`}>
+  <div class="wrap narrow">
+    <header class="page-head">
+      <h1>プロフィール</h1>
+    </header>
+
+    <div class="me">
+      <div class="me__avatar" aria-hidden="true">
+        <svg viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="var(--surface)"/><rect x="26" y="26" width="68" height="68" rx="4" fill="none" stroke="var(--accent)" stroke-width="5"/><path d="M60 26v68M26 60h68" stroke="var(--accent)" stroke-width="5"/><circle cx="78" cy="42" r="7" fill="var(--warm)"/></svg>
+      </div>
+      <div>
+        <p class="me__name">{SITE.author}</p>
+        <p class="me__catch">{SITE.catch}</p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <h2>自己紹介</h2>
+      <p>室蘭に住んでいるおっさんです。仕事の段取りをAIに任せるようになったら、自分の席がだんだん窓際に寄っていきました。比喩ではなく、物理的にです。</p>
+      <p>おかげで窓の外を眺める時間ができました。そこで見つけた小さくて面白いものを、写真と正直な一言で残しています。</p>
+
+      <h2>興味のあること</h2>
+      <ul>
+        <li>道ばたや店先の「なんでこうなった」もの</li>
+        <li>100円ショップの新商品（だいたい100円ではない）</li>
+        <li>白鳥大橋の、日によって違う見え方</li>
+        <li>AIに頼んだら、思ったより上手くいったこと・いかなかったこと</li>
+      </ul>
+
+      <h2>このサイトについて</h2>
+      <p>記事はだいたい短めです。長く書こうとすると、窓の外で何かが起きて見逃すので。</p>
+      <p>ご連絡は<a href={url('contact/')}>お問い合わせ</a>からどうぞ。</p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .narrow { max-width: calc(var(--read) + var(--gutter) * 2); }
+  .me {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .me__avatar {
+    width: 6rem;
+    height: 6rem;
+    flex: none;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  .me__name {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .me__catch { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.95rem; }
+</style>

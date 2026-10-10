@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostGrid from '../../components/PostGrid.astro';
+import ArchiveNav from '../../components/ArchiveNav.astro';
+import { getPosts, categoriesOf } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return categoriesOf(posts).map((cat) => ({
+    params: { slug: cat.slug },
+    props: { cat, all: posts, posts: posts.filter((p) => p.data.category === cat.name) },
+  }));
+}
+
+const { cat, all, posts } = Astro.props;
+---
+<Base title={`カテゴリー「${cat.name}」`} description={cat.blurb || `${cat.name}の記事一覧`}>
+  <div class="wrap">
+    <header class="page-head">
+      <h1>{cat.name}</h1>
+      <p>{cat.blurb ? `${cat.blurb} ` : ''}{posts.length} 本。</p>
+    </header>
+    <ArchiveNav posts={all} current={`cat:${cat.name}`} />
+    <PostGrid posts={posts} />
+  </div>
+</Base>

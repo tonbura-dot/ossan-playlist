@@ -1,0 +1,84 @@
+---
+import { Image } from 'astro:assets';
+import { url, formatDate, isoDate, categorySlug, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+  eager?: boolean;
+}
+const { post, eager = false } = Astro.props;
+const { title, date, category, image, description } = post.data;
+---
+<article class="card">
+  <a class="card__media" href={url(`posts/${post.id}/`)} tabindex="-1" aria-hidden="true">
+    {image ? (
+      <Image src={image} alt="" widths={[400, 800]} sizes="(max-width: 40rem) 100vw, 24rem" loading={eager ? 'eager' : 'lazy'} />
+    ) : (
+      <span class="card__noimg">{category}</span>
+    )}
+  </a>
+  <div class="card__body">
+    <p class="card__meta">
+      <time datetime={isoDate(date)}>{formatDate(date)}</time>
+      <a class="chip" href={url(`category/${categorySlug(category)}/`)}>{category}</a>
+    </p>
+    <h3 class="card__title"><a href={url(`posts/${post.id}/`)}>{title}</a></h3>
+    {description && <p class="card__desc">{description}</p>}
+  </div>
+</article>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    height: 100%;
+  }
+  .card__media {
+    display: block;
+    aspect-ratio: 3 / 2;
+    background: var(--line);
+    overflow: hidden;
+  }
+  .card__media :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+  .card:hover .card__media :global(img) { transform: scale(1.03); }
+  .card__noimg {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    color: var(--muted);
+  }
+  .card__body { padding: 1rem 1.1rem 1.2rem; }
+  .card__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .card__title {
+    margin: 0.5rem 0 0;
+    font-size: 1.1rem;
+  }
+  .card__title a { color: var(--ink); text-decoration: none; }
+  .card__title a:hover { color: var(--accent); }
+  .card__desc {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+</style>

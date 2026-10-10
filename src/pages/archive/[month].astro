@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostGrid from '../../components/PostGrid.astro';
+import ArchiveNav from '../../components/ArchiveNav.astro';
+import { getPosts, monthsOf, monthKey } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return monthsOf(posts).map((m) => ({
+    params: { month: m.key },
+    props: { label: m.label, key: m.key, all: posts, posts: posts.filter((p) => monthKey(p.data.date) === m.key) },
+  }));
+}
+
+const { label, key, all, posts } = Astro.props;
+---
+<Base title={`${label}の記事`} description={`${label}に書いた記事の一覧`}>
+  <div class="wrap">
+    <header class="page-head">
+      <h1>{label}</h1>
+      <p>この月に書いたもの、{posts.length} 本。</p>
+    </header>
+    <ArchiveNav posts={all} current={`month:${key}`} />
+    <PostGrid posts={posts} />
+  </div>
+</Base>

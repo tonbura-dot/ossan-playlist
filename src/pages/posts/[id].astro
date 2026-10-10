@@ -1,0 +1,122 @@
+---
+import { Image, getImage } from 'astro:assets';
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { getPosts, url, formatDate, isoDate, categorySlug } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { id: post.id },
+    // posts は新しい順。newer = 1つ新しい記事、older = 1つ古い記事
+    props: { post, newer: posts[i - 1], older: posts[i + 1] },
+  }));
+}
+
+const { post, newer, older } = Astro.props;
+const { title, date, category, image, description } = post.data;
+const { Content } = await render(post);
+const ogImage = image ? (await getImage({ src: image, width: 1200, format: 'jpg' })).src : undefined;
+---
+<Base title={title} description={description} image={ogImage}>
+  <article class="post">
+    <header class="wrap narrow post__head">
+      <p class="post__meta">
+        <time datetime={isoDate(date)}>{formatDate(date)}</time>
+        <a class="chip" href={url(`category/${categorySlug(category)}/`)}>{category}</a>
+      </p>
+      <h1 class="post__title">{title}</h1>
+      {description && <p class="post__lead">{description}</p>}
+    </header>
+
+    {image && (
+      <figure class="wrap post__hero">
+        <Image src={image} alt="" widths={[600, 1000, 1400]} sizes="(max-width: 56rem) 100vw, 52rem" loading="eager" fetchpriority="high" />
+      </figure>
+    )}
+
+    <div class="wrap narrow">
+      <div class="prose">
+        <Content />
+      </div>
+    </div>
+
+    <nav class="wrap narrow pager" aria-label="前後の記事">
+      {older ? (
+        <a class="pager__link" href={url(`posts/${older.id}/`)} rel="prev">
+          <span class="pager__dir">← 前の記事</span>
+          <span class="pager__title">{older.data.title}</span>
+        </a>
+      ) : <span class="pager__none" />}
+      {newer ? (
+        <a class="pager__link pager__link--next" href={url(`posts/${newer.id}/`)} rel="next">
+          <span class="pager__dir">次の記事 →</span>
+          <span class="pager__title">{newer.data.title}</span>
+        </a>
+      ) : <span class="pager__none" />}
+    </nav>
+    <p class="wrap narrow back"><a href={url('posts/')}>記事一覧へ戻る</a></p>
+  </article>
+</Base>
+
+<style>
+  .narrow { max-width: calc(var(--read) + var(--gutter) * 2); }
+  .post__head { padding-top: clamp(2rem, 6vw, 3.5rem); }
+  .post__meta {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .post__title {
+    margin: 0.6rem 0 0;
+    font-size: clamp(1.6rem, 5.5vw, 2.3rem);
+  }
+  .post__lead {
+    margin: 0.75rem 0 0;
+    color: var(--muted);
+  }
+  .post__hero {
+    max-width: calc(52rem + var(--gutter) * 2);
+    margin-block: 1.75rem 2rem;
+  }
+  .post__hero :global(img) {
+    width: 100%;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  .pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 3rem;
+  }
+  .pager__link {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .pager__link:hover { border-color: var(--accent); }
+  .pager__link--next { text-align: right; grid-column: 2; }
+  .pager__dir { font-size: 0.8rem; color: var(--accent); }
+  .pager__title { font-size: 0.9rem; line-height: 1.6; }
+  @media (max-width: 30rem) {
+    .pager { grid-template-columns: 1fr; }
+    .pager__link--next { grid-column: auto; }
+    .pager__none { display: none; }
+  }
+  .back {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+  }
+</style>

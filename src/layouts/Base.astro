@@ -1,0 +1,162 @@
+---
+import '../styles/global.css';
+import { SITE } from '../site.config';
+import { url } from '../lib/posts';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
+const { title, description = SITE.description, image } = Astro.props;
+const fullTitle = title ? `${title}｜${SITE.name}` : `${SITE.name}｜${SITE.catch}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const path = Astro.url.pathname;
+const nav = [
+  { href: url('posts/'), label: '記事' },
+  { href: url('profile/'), label: 'プロフィール' },
+  { href: url('contact/'), label: 'お問い合わせ' },
+];
+const isCurrent = (href: string) => path === href || (href !== url('') && path.startsWith(href));
+---
+<!doctype html>
+<html lang={SITE.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
+    <meta name="theme-color" content="#f5f2eb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1b1c1e" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content={title ? 'article' : 'website'} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:url" content={canonical} />
+    {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へ移動</a>
+    <slot name="before" />
+    <header class="site-header">
+      <div class="wrap site-header__inner">
+        <a class="brand" href={url('')}>
+          <svg class="brand__icon" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="3" width="26" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 3v26M3 16h26" stroke="currentColor" stroke-width="2.5"/><circle cx="22" cy="10" r="2.6" fill="var(--warm)"/></svg>
+          <span>{SITE.name}</span>
+        </a>
+        <nav aria-label="メインメニュー">
+          <ul class="nav">
+            {nav.map((n) => (
+              <li><a href={n.href} aria-current={isCurrent(n.href) ? 'page' : undefined}>{n.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap site-footer__inner">
+        <p class="site-footer__name">{SITE.name}</p>
+        <ul class="site-footer__links">
+          <li><a href={url('posts/')}>記事一覧</a></li>
+          <li><a href={url('profile/')}>プロフィール</a></li>
+          <li><a href={url('contact/')}>お問い合わせ</a></li>
+          <li><a href={url('privacy/')}>プライバシーポリシー</a></li>
+          <li><a href={url('?opening=1')}>オープニングをもう一度見る</a></li>
+        </ul>
+        <p class="site-footer__copy">© {new Date().getFullYear()} {SITE.author}</p>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    flex-wrap: wrap;
+    min-height: 3.5rem;
+    padding-block: 0.4rem;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.06em;
+  }
+  .brand__icon { width: 1.5rem; height: 1.5rem; color: var(--accent); flex: none; }
+  .nav {
+    display: flex;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .nav a {
+    display: inline-block;
+    padding: 0.5rem 0.65rem;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-radius: 6px;
+  }
+  .nav a:hover { color: var(--ink); background: var(--surface); }
+  .nav a[aria-current='page'] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--warm); border-radius: 0; }
+
+  @media (max-width: 30rem) {
+    .site-header__inner { justify-content: center; }
+    .nav a { padding: 0.35rem 0.55rem; font-size: 0.85rem; }
+  }
+
+  main { display: block; min-height: 60vh; }
+
+  .site-footer {
+    margin-top: clamp(3rem, 8vw, 5rem);
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+  .site-footer__inner { padding-block: 2rem 2.5rem; }
+  .site-footer__name {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-head);
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .site-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .site-footer__links a { color: var(--muted); }
+  .site-footer__copy { margin: 1rem 0 0; font-size: 0.8rem; }
+</style>

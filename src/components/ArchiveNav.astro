@@ -1,0 +1,69 @@
+---
+import { url, categoriesOf, monthsOf, type Post } from '../lib/posts';
+
+interface Props {
+  posts: Post[];
+  current?: string;
+}
+const { posts, current } = Astro.props;
+const cats = categoriesOf(posts);
+const months = monthsOf(posts);
+---
+<nav class="archive" aria-label="記事の絞り込み">
+  <div class="archive__group">
+    <h2 class="archive__label">カテゴリー</h2>
+    <ul>
+      <li><a class="chip" href={url('posts/')} aria-current={current === 'all' ? 'page' : undefined}>すべて <span>{posts.length}</span></a></li>
+      {cats.map((c) => (
+        <li><a class="chip" href={url(`category/${c.slug}/`)} aria-current={current === `cat:${c.name}` ? 'page' : undefined}>{c.name} <span>{c.count}</span></a></li>
+      ))}
+    </ul>
+  </div>
+  <div class="archive__group">
+    <h2 class="archive__label">月別</h2>
+    <ul>
+      {months.map((m) => (
+        <li><a class="chip" href={url(`archive/${m.key}/`)} aria-current={current === `month:${m.key}` ? 'page' : undefined}>{m.label} <span>{m.count}</span></a></li>
+      ))}
+    </ul>
+  </div>
+</nav>
+
+<style>
+  .archive {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .archive__group { display: grid; gap: 0.4rem; }
+  .archive__label {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .chip { font-size: 0.85rem; padding: 0.5rem 0.8rem; }
+  .chip span { opacity: 0.6; margin-left: 0.15em; }
+  .chip[aria-current='page'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  @media (min-width: 48rem) {
+    .archive { grid-template-columns: 1fr 1fr; }
+  }
+</style>
