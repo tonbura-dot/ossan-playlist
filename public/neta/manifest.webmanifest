@@ -1,0 +1,16 @@
+{
+  "name": "ネタ帳（おっさんのプレイリスト）",
+  "short_name": "ネタ帳",
+  "description": "見つけたものを写真と一言でメモして、あとで記事の材料にする。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f2eb",
+  "theme_color": "#2c6a87",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

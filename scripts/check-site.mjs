@@ -73,7 +73,7 @@ for (const file of htmlFiles) {
 
   if (!/<html[^>]*\slang="ja"/.test(html)) fail(`${name}: <html lang="ja"> がない`);
   if (!/<title>[^<]+<\/title>/.test(html)) fail(`${name}: <title> がない`);
-  if (!/<meta name="viewport" content="width=device-width, initial-scale=1"/.test(html)) fail(`${name}: スマホ用 viewport がない`);
+  if (!/<meta name="viewport" content="width=device-width, initial-scale=1[",]/.test(html)) fail(`${name}: スマホ用 viewport がない`);
   if (!/<meta name="description" content="[^"]+"/.test(html)) fail(`${name}: description がない`);
   const h1 = (html.match(/<h1[\s>]/g) || []).length;
   if (h1 !== 1) fail(`${name}: h1 が ${h1} 個（1個であるべき）`);

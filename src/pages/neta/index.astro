@@ -1,0 +1,453 @@
+---
+// ネタ帳: 見つけたものを写真と一言でメモして、あとで記事の材料にする。
+// データはこの端末のブラウザの中だけに保存する（サーバーには送らない）。
+import '../../styles/global.css';
+import { SITE, CATEGORIES } from '../../site.config';
+import { url } from '../../lib/posts';
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ネタ帳｜{SITE.name}</title>
+    <meta name="description" content="見つけたものを写真と一言でメモして、あとで記事の材料にするためのネタ帳。" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#2c6a87" />
+    <link rel="manifest" href={url('neta/manifest.webmanifest')} />
+    <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={url('neta/apple-touch-icon.png')} />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ネタ帳" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  </head>
+  <body>
+    <header class="nt-head">
+      <div class="nt-wrap nt-head__inner">
+        <div>
+          <h1>ネタ帳</h1>
+          <p>見つけたら、とりあえずメモ。</p>
+        </div>
+        <a class="nt-head__blog" href={url('')}>ブログへ</a>
+      </div>
+    </header>
+
+    <main class="nt-wrap" id="main">
+      <p class="nt-warn" id="nt-warn" hidden>
+        このブラウザではネタを保存できません。プライベートブラウズをオフにするか、別のブラウザで開いてください。
+      </p>
+
+      <button class="button nt-add" id="nt-add" type="button">＋ ネタを追加</button>
+
+      <div class="nt-tabs" role="group" aria-label="表示するネタ">
+        <button type="button" data-filter="todo" aria-pressed="true">まだ <span>0</span></button>
+        <button type="button" data-filter="done" aria-pressed="false">記事にした <span>0</span></button>
+        <button type="button" data-filter="all" aria-pressed="false">すべて <span>0</span></button>
+      </div>
+
+      <p class="nt-empty" id="nt-empty">読み込んでいます…</p>
+      <ul class="nt-list" id="nt-list"></ul>
+
+      <details class="nt-more">
+        <summary>使い方とバックアップ</summary>
+        <div class="nt-more__body">
+          <h2>使い方</h2>
+          <ol>
+            <li>何か見つけたら「＋ ネタを追加」。写真と一言だけでも保存できます。</li>
+            <li>記事にしたくなったら、ネタを開いて「記事の材料にする」。</li>
+            <li>「写真ごと共有」で、写真と依頼文を Claude や自分あてに送れます。Mac に AirDrop して、記事フォルダに入れることもできます。</li>
+          </ol>
+          <h2>ホーム画面に置く（iPhone）</h2>
+          <p>Safari の共有ボタン →「ホーム画面に追加」で、アプリのように使えます。</p>
+          <p class="nt-note">注意：iPhone では、ホーム画面から開いたネタ帳と Safari で開いたネタ帳は、中身が別々になります。どちらか片方に決めて使ってください。</p>
+          <h2>バックアップ</h2>
+          <p>ネタはこの端末のブラウザの中だけに保存されています。ブラウザのデータを消すと、ネタも消えます。ときどきバックアップを保存しておくと安心です。</p>
+          <div class="nt-backup">
+            <button class="button button--ghost" id="bk-export" type="button">バックアップを保存</button>
+            <label class="button button--ghost">
+              バックアップから戻す
+              <input id="bk-import" type="file" accept="application/json,.json" class="visually-hidden" />
+            </label>
+          </div>
+        </div>
+      </details>
+    </main>
+
+    <!-- 追加・編集 -->
+    <dialog class="nt-dialog" id="nt-editor" aria-labelledby="ed-heading">
+      <form id="ed-form" class="nt-dialog__inner" novalidate>
+        <div class="nt-dialog__bar">
+          <button type="button" class="nt-link" id="ed-cancel">キャンセル</button>
+          <h2 id="ed-heading">ネタを追加</h2>
+          <button type="submit" class="nt-link nt-link--strong">保存</button>
+        </div>
+
+        <div class="nt-dialog__body">
+          <div class="ed-photos" id="ed-photos"></div>
+          <div class="ed-picks">
+            <label class="ed-pick button">
+              写真を撮る
+              <input type="file" accept="image/*" capture="environment" class="visually-hidden" />
+            </label>
+            <label class="ed-pick button button--ghost">
+              写真を選ぶ
+              <input type="file" accept="image/*" multiple class="visually-hidden" />
+            </label>
+          </div>
+          <p class="ed-note" id="ed-photo-note">写真 0/6</p>
+
+          <label class="ed-field">
+            <span>一言（なにが面白かった？）</span>
+            <textarea id="ed-memo" rows="4" placeholder="例：9月なのに自販機におしるこ。気が早すぎる"></textarea>
+          </label>
+          <label class="ed-field">
+            <span>タイトル案 <small>任意</small></span>
+            <input id="ed-title" type="text" maxlength="60" placeholder="例：おしるこの帰還" />
+          </label>
+          <div class="ed-row">
+            <label class="ed-field">
+              <span>場所 <small>任意</small></span>
+              <input id="ed-place" type="text" maxlength="60" placeholder="例：会社の前の自販機" />
+            </label>
+            <label class="ed-field ed-field--narrow">
+              <span>カテゴリー</span>
+              <select id="ed-category">
+                {CATEGORIES.map((c) => <option value={c.name}>{c.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <label class="ed-field">
+            <span>日付</span>
+            <input id="ed-date" type="date" />
+          </label>
+
+          <div class="ed-actions">
+            <button type="button" class="button" id="ed-export" hidden>記事の材料にする</button>
+            <button type="button" class="nt-danger" id="ed-delete" hidden>このネタを削除</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- 記事の材料にする -->
+    <dialog class="nt-dialog" id="nt-export" aria-labelledby="ex-heading">
+      <div class="nt-dialog__inner">
+        <div class="nt-dialog__bar">
+          <span></span>
+          <h2 id="ex-heading">記事の材料にする</h2>
+          <button type="button" class="nt-link nt-link--strong" id="ex-close">閉じる</button>
+        </div>
+        <div class="nt-dialog__body">
+          <p class="ex-lead">いちばん楽なのは「写真ごと共有」で Claude に送ること。依頼文が付いているので、そのまま記事にしてもらえます。</p>
+          <div class="ex-actions">
+            <button type="button" class="button" id="ex-share">写真ごと共有</button>
+            <button type="button" class="button button--ghost" id="ex-copy-request">Claude への依頼文をコピー</button>
+          </div>
+
+          <h3>自分で記事フォルダに入れる場合</h3>
+          <p class="ex-small">
+            ブログの <code>src/content/posts/</code> に <code id="ex-folder"></code> のようなフォルダを作り、下の下書きを <code>index.md</code>、写真を <code>photo.jpg</code>（2枚目以降は <code>photo-2.jpg</code>…）として入れます。下書きは <code>draft: true</code> になっているので、仕上げたらその行を消すと公開されます。
+          </p>
+          <textarea id="ex-md" rows="10" readonly aria-label="記事の下書き"></textarea>
+          <div class="ex-actions">
+            <button type="button" class="button button--ghost" id="ex-copy-md">下書きをコピー</button>
+            <button type="button" class="button button--ghost" id="ex-download">ファイルを保存</button>
+          </div>
+
+          <label class="ex-done">
+            <input type="checkbox" id="ex-done" />
+            このネタは記事にした
+          </label>
+        </div>
+      </div>
+    </dialog>
+
+    <div class="nt-toast" id="nt-toast" role="status" aria-live="polite"></div>
+
+    <script>
+      import { start } from '../../neta/app';
+      start();
+    </script>
+  </body>
+</html>
+
+<style>
+  body { background: var(--bg); padding-bottom: env(safe-area-inset-bottom); }
+  .nt-wrap { width: 100%; max-width: 40rem; margin-inline: auto; padding-inline: max(1rem, env(safe-area-inset-left)); }
+
+  .nt-head {
+    background: var(--accent);
+    color: var(--accent-ink);
+    padding-top: env(safe-area-inset-top);
+  }
+  .nt-head__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1rem;
+  }
+  .nt-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.12em; }
+  .nt-head p { margin: 0; font-size: 0.85rem; opacity: 0.85; }
+  .nt-head__blog {
+    color: inherit;
+    font-size: 0.85rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+    text-decoration: none;
+    opacity: 0.9;
+  }
+
+  .nt-warn {
+    margin: 1rem 0 0;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius);
+    background: color-mix(in srgb, #c0392b 12%, var(--surface));
+    border: 1px solid #c0392b;
+  }
+  .nt-add { width: 100%; margin-top: 1.25rem; min-height: 52px; font-size: 1.05rem; }
+  .nt-add:disabled { opacity: 0.5; }
+
+  .nt-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    margin-top: 1.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .nt-tabs button {
+    font: inherit;
+    font-size: 0.85rem;
+    min-height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .nt-tabs button span { opacity: 0.7; margin-left: 0.2em; }
+  .nt-tabs button[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  .nt-empty { color: var(--muted); text-align: center; margin: 2rem 0; font-size: 0.9rem; }
+  .nt-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.75rem; }
+  .nt-list :global(.nt-card) {
+    display: flex;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.6rem;
+    text-align: left;
+    font: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+  }
+  .nt-list :global(.nt-card.is-done) { opacity: 0.65; }
+  .nt-list :global(.nt-card__thumb) {
+    position: relative;
+    flex: none;
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--line);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-head);
+    color: var(--muted);
+  }
+  .nt-list :global(.nt-card__thumb img) { width: 100%; height: 100%; object-fit: cover; }
+  .nt-list :global(.nt-card__more) {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    font-size: 0.7rem;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.6);
+    color: #fff;
+  }
+  .nt-list :global(.nt-card__body) { display: grid; align-content: start; gap: 0.2rem; min-width: 0; }
+  .nt-list :global(.nt-card__meta) { font-size: 0.75rem; color: var(--muted); }
+  .nt-list :global(.nt-card__title) { font-weight: 600; line-height: 1.5; }
+  .nt-list :global(.nt-card__memo) {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .nt-list :global(.nt-card__badge) {
+    justify-self: start;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .nt-more {
+    margin: 2rem 0 3rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .nt-more summary { padding: 0.9rem 1rem; cursor: pointer; font-weight: 600; }
+  .nt-more__body { padding: 0 1rem 1rem; font-size: 0.9rem; }
+  .nt-more__body h2 { font-size: 1rem; margin: 1rem 0 0.25rem; }
+  .nt-more__body p, .nt-more__body ol { margin: 0.25rem 0; }
+  .nt-more__body ol { padding-left: 1.3em; }
+  .nt-note { color: var(--warm); }
+  .nt-backup { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+
+  /* ダイアログ（スマホでは全画面） */
+  .nt-dialog {
+    width: min(100%, 40rem);
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0 auto;
+    padding: 0;
+    border: 0;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .nt-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+  @media (min-width: 42rem) {
+    .nt-dialog { height: auto; max-height: calc(100% - 4rem); margin-block: 2rem; border-radius: 14px; }
+  }
+  .nt-dialog__inner { display: flex; flex-direction: column; height: 100%; }
+  .nt-dialog__bar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .nt-dialog__bar h2 { margin: 0; font-size: 1rem; text-align: center; }
+  .nt-dialog__bar > :last-child { justify-self: end; }
+  .nt-dialog__body { padding: 1rem; overflow-y: auto; flex: 1; }
+  .nt-link {
+    font: inherit;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    padding: 0.5rem;
+    min-height: 44px;
+    cursor: pointer;
+    justify-self: start;
+  }
+  .nt-link--strong { font-weight: 700; }
+
+  .ed-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .ed-photos:empty { display: none; }
+  .ed-photos :global(.ed-photo) { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--line); }
+  .ed-photos :global(.ed-photo img) { width: 100%; height: 100%; object-fit: cover; }
+  .ed-photos :global(.ed-photo__del) {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 0;
+    background: rgb(0 0 0 / 0.6);
+    color: #fff;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .ed-photos :global(.ed-photo__tag) {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    font-size: 0.65rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    background: var(--warm);
+    color: #fff;
+  }
+  .ed-picks { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+  .ed-pick { width: 100%; }
+  .ed-pick:has(input:disabled) { opacity: 0.4; pointer-events: none; }
+  .ed-note { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--muted); text-align: right; }
+
+  .ed-field { display: grid; gap: 0.3rem; margin-top: 1rem; min-width: 0; }
+  .ed-field > span { font-size: 0.85rem; font-weight: 600; }
+  .ed-field small { font-weight: 400; color: var(--muted); margin-left: 0.25rem; }
+  .ed-row { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; }
+  .ed-field--narrow select { min-width: 7rem; }
+  .ed-field input, .ed-field textarea, .ed-field select, #ex-md {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+  }
+  .ed-field textarea { resize: vertical; line-height: 1.7; }
+  .ed-actions { display: grid; gap: 0.75rem; margin-top: 1.75rem; }
+  .ed-actions .button { width: 100%; }
+  .nt-danger {
+    font: inherit;
+    font-size: 0.9rem;
+    border: 0;
+    background: none;
+    color: #c0392b;
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  .ex-lead { margin: 0; font-size: 0.9rem; }
+  .ex-actions { display: grid; gap: 0.5rem; margin-top: 0.75rem; }
+  .ex-actions .button { width: 100%; }
+  .nt-dialog h3 { font-size: 0.95rem; margin: 1.75rem 0 0.25rem; }
+  .ex-small { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.5rem; line-height: 1.7; }
+  .ex-small code { font-size: 0.75rem; background: var(--surface); border: 1px solid var(--line); padding: 0 0.25rem; border-radius: 4px; }
+  #ex-md { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6; }
+  .ex-done {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .ex-done input { width: 1.3rem; height: 1.3rem; accent-color: var(--accent); }
+
+  .nt-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    transform: translate(-50%, 1rem);
+    max-width: calc(100% - 2rem);
+    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 0.9rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 2000;
+  }
+  .nt-toast:global(.is-on) { opacity: 1; transform: translate(-50%, 0); }
+</style>
