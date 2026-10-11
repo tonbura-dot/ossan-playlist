@@ -16,6 +16,8 @@ const posts = defineCollection({
       category: z.string(),
       image: image().optional(),
       description: z.string().optional(),
+      // true にすると下書き。本番のサイトには出さない（npm run dev では見える）
+      draft: z.boolean().optional(),
     }),
 });
 

@@ -3,9 +3,9 @@ import { CATEGORIES } from '../site.config';
 
 export type Post = CollectionEntry<'posts'>;
 
-/** 新しい順の全記事 */
+/** 新しい順の全記事（下書きは本番では除く） */
 export async function getPosts(): Promise<Post[]> {
-  const posts = await getCollection('posts');
+  const posts = await getCollection('posts', (p) => !(p.data.draft && import.meta.env.PROD));
   return posts.sort((a, b) => b.data.date.getTime() - a.data.date.getTime() || a.id.localeCompare(b.id));
 }
 
