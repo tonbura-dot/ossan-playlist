@@ -54,6 +54,13 @@ body {
   letter-spacing: 0.02em;
   overflow-wrap: anywhere;
   line-break: strict;
+  /* 日本語を文節で折り返し（「だけ」などが単独で次の行に落ちにくくなる） */
+  word-break: auto-phrase;
+}
+
+/* 段落の最後の行に1〜2文字だけ残る「泣き別れ」を防ぐ */
+p, li, dd, figcaption, blockquote {
+  text-wrap: pretty;
 }
 
 img { max-width: 100%; height: auto; display: block; }
