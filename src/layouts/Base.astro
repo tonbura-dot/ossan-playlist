@@ -56,6 +56,23 @@ skyline += ' L1600,120 Z';
     <meta property="og:url" content={canonical} />
     {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    {SITE.analytics.gaId && (
+      <>
+        <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${SITE.analytics.gaId}`}></script>
+        <script is:inline define:vars={{ gaId: SITE.analytics.gaId }}>
+          // 手元（localhost）で見ているときは数えない
+          if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function () { dataLayer.push(arguments); };
+            gtag('js', new Date());
+            gtag('config', gaId);
+          }
+        </script>
+      </>
+    )}
+    {SITE.analytics.goatcounter && (
+      <script is:inline async data-goatcounter={`https://${SITE.analytics.goatcounter}.goatcounter.com/count`} src="https://gc.zgo.at/count.js"></script>
+    )}
     <slot name="head" />
   </head>
   <body>
@@ -95,13 +112,41 @@ skyline += ' L1600,120 Z';
           <li><a href={url('privacy/')}>プライバシーポリシー</a></li>
           <li><a href={url('?opening=1')}>オープニングをもう一度見る</a></li>
         </ul>
+        {SITE.analytics.goatcounter && (
+          <p class="site-footer__count" id="visitor-count" data-code={SITE.analytics.goatcounter} hidden>
+            これまでに <strong>-</strong> 人が窓際をのぞきました
+          </p>
+        )}
         <p class="site-footer__copy">© {new Date().getFullYear()} {SITE.author}</p>
       </div>
     </footer>
   </body>
 </html>
 
+<script>
+  // フッターの訪問者数（GoatCounter の公開カウンター）。取れなければ何も出さない
+  const el = document.getElementById('visitor-count');
+  if (el) {
+    fetch(`https://${el.dataset.code}.goatcounter.com/counter/TOTAL.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d: { count?: string }) => {
+        if (!d.count) return;
+        el.querySelector('strong')!.textContent = d.count;
+        el.hidden = false;
+      })
+      .catch(() => {});
+  }
+</script>
+
 <style>
+  .site-footer__count { margin: 1rem 0 0; color: var(--muted); }
+  .site-footer__count strong {
+    font-family: var(--font-head);
+    font-size: 1.3em;
+    color: var(--accent);
+    text-shadow: 0 0 12px rgb(255 179 92 / 0.5);
+    margin-inline: 0.15em;
+  }
   .site-header {
     border-bottom: 1px solid rgb(255 255 255 / 0.06);
     background: rgb(10 15 31 / 0.72);
