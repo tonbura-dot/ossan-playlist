@@ -19,6 +19,25 @@ const nav = [
   { href: url('contact/'), label: 'お問い合わせ' },
 ];
 const isCurrent = (href: string) => path === href || (href !== url('') && path.startsWith(href));
+
+// フッターの工場夜景のシルエット（決まった並びの乱数で毎回同じ形）
+let seed = 11;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+let skyline = 'M0,120 L0,96';
+const skylineLights: { x: number; y: number; r: number; red: boolean }[] = [];
+for (let x = 0; x < 1600; ) {
+  const w = 20 + rnd() * 60;
+  const h = 10 + rnd() * (rnd() > 0.8 ? 60 : 28);
+  skyline += ` L${x.toFixed(0)},${(120 - h).toFixed(0)} L${(x + w).toFixed(0)},${(120 - h).toFixed(0)}`;
+  if (rnd() > 0.75) {
+    const cx = x + w / 2;
+    skyline += ` L${cx.toFixed(0)},${(120 - h).toFixed(0)} L${cx.toFixed(0)},${(120 - h - 30).toFixed(0)} L${(cx + 5).toFixed(0)},${(120 - h - 30).toFixed(0)} L${(cx + 5).toFixed(0)},${(120 - h).toFixed(0)}`;
+    skylineLights.push({ x: Math.round(cx + 2), y: Math.round(120 - h - 33), r: 2, red: true });
+  }
+  for (let i = 0; i < 3; i++) skylineLights.push({ x: Math.round(x + rnd() * w), y: Math.round(120 - rnd() * h), r: 1.2, red: false });
+  x += w;
+}
+skyline += ' L1600,120 Z';
 ---
 <!doctype html>
 <html lang={SITE.lang}>
@@ -29,8 +48,7 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
-    <meta name="theme-color" content="#f5f2eb" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1b1c1e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0a0f1f" />
     <meta property="og:type" content={title ? 'article' : 'website'} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
@@ -64,6 +82,10 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
     </main>
 
     <footer class="site-footer">
+      <svg class="skyline" viewBox="0 0 1600 120" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <path class="skyline__land" d={skyline} />
+        {skylineLights.map((l) => <circle cx={l.x} cy={l.y} r={l.r} class={l.red ? 'skyline__red' : 'skyline__light'} />)}
+      </svg>
       <div class="wrap site-footer__inner">
         <p class="site-footer__name">{SITE.name}</p>
         <ul class="site-footer__links">
@@ -81,8 +103,8 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
 
 <style>
   .site-header {
-    border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+    background: rgb(10 15 31 / 0.72);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -109,7 +131,7 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
     font-size: 1.05rem;
     letter-spacing: 0.06em;
   }
-  .brand__icon { width: 1.5rem; height: 1.5rem; color: var(--accent); flex: none; }
+  .brand__icon { width: 1.5rem; height: 1.5rem; color: var(--cool); flex: none; filter: drop-shadow(0 0 6px rgb(159 212 255 / 0.5)); }
   .nav {
     display: flex;
     gap: 0.25rem;
@@ -126,7 +148,7 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
     border-radius: 6px;
   }
   .nav a:hover { color: var(--ink); background: var(--surface); }
-  .nav a[aria-current='page'] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--warm); border-radius: 0; }
+  .nav a[aria-current='page'] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); border-radius: 0; }
 
   @media (max-width: 30rem) {
     .site-header__inner { justify-content: center; }
@@ -136,13 +158,22 @@ const isCurrent = (href: string) => path === href || (href !== url('') && path.s
   main { display: block; min-height: 60vh; }
 
   .site-footer {
-    margin-top: clamp(3rem, 8vw, 5rem);
-    border-top: 1px solid var(--line);
-    background: var(--surface);
+    margin-top: clamp(4rem, 10vw, 7rem);
+    background: #060914;
     font-size: 0.875rem;
     color: var(--muted);
   }
-  .site-footer__inner { padding-block: 2rem 2.5rem; }
+  .site-footer__inner { padding-block: 1.5rem 2.5rem; }
+  .skyline {
+    display: block;
+    width: 100%;
+    height: 90px;
+    margin-top: -89px;
+    background: linear-gradient(to bottom, transparent, rgb(255 150 60 / 0.12));
+  }
+  .skyline__land { fill: #060914; }
+  .skyline__light { fill: #ffcf86; opacity: 0.8; }
+  .skyline__red { fill: #ff5b4a; }
   .site-footer__name {
     margin: 0 0 0.75rem;
     font-family: var(--font-head);
