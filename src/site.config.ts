@@ -19,7 +19,7 @@ export const SITE = {
   // アクセス解析。空のままなら何も読み込まない。
   analytics: {
     // Google アナリティクス 4 の測定 ID（例: "G-XXXXXXXXXX"）。管理画面でアクセス数を見る用
-    gaId: '',
+    gaId: 'G-NL4Z313FEX',
     // GoatCounter のサイトコード（例: "ossan-playlist"）。フッターの「○○人」表示に使う。
     // GoatCounter の設定で「Allow adding visitor counts on your website」をオンにしておくこと
     goatcounter: '',
