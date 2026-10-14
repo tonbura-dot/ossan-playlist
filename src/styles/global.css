@@ -1,20 +1,27 @@
-/* ===== 色とサイズ（夜の窓際） ===== */
+/* ===== 色とサイズ（深夜ラジオのスタジオ） ===== */
 :root {
-  --bg: #0a0f1f;          /* 夜空 */
-  --surface: #121a33;     /* カードなど */
-  --surface-2: #18234a;
-  --ink: #eef1f7;
-  --muted: #9ba7c6;
-  --line: #24305a;
-  --accent: #ffb35c;      /* 工場夜景のオレンジ */
-  --accent-ink: #1b1204;
-  --cool: #9fd4ff;        /* 白鳥大橋の明かり */
-  --warm: #ffcf86;
-  --glow: 0 0 0 1px rgb(255 179 92 / 0.35), 0 10px 40px rgb(255 160 70 / 0.18);
+  --bg: #08070a;          /* スタジオの黒い壁 */
+  --surface: #121015;     /* カードなど */
+  --surface-2: #18151c;
+  --ink: #f4eff0;
+  --muted: #9a929b;
+  --line: #262029;
+  --accent: #ff5c8a;      /* ネオン管のピンク */
+  --accent-ink: #1a0710;
+  --onair: #ff2a4f;       /* ON AIR ランプの赤 */
+  --tube: #ffe6ee;        /* 光っているネオン管の芯 */
+  --cool: #7fe7ff;        /* 小さな青いネオン */
+  --warm: #ffb3c7;
+  --glow: 0 0 0 1px rgb(255 92 138 / 0.45), 0 0 28px rgb(255 92 138 / 0.25);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 12px 32px rgb(0 0 0 / 0.35);
+  --neon-pink: 0 0 1px #fff, 0 0 5px var(--accent), 0 0 12px var(--accent), 0 0 30px var(--accent), 0 0 60px rgb(255 92 138 / 0.5);
+  --neon-red: 0 0 2px #fff, 0 0 6px var(--onair), 0 0 14px var(--onair), 0 0 34px var(--onair), 0 0 70px rgb(255 42 79 / 0.45);
+  --neon-ice: 0 0 1px #fff, 0 0 5px var(--cool), 0 0 14px var(--cool), 0 0 30px rgb(127 231 255 / 0.45);
 
-  --font-body: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', 'Meiryo', system-ui, sans-serif;
-  --font-head: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'BIZ UDPMincho', serif;
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic', 'Meiryo', system-ui, sans-serif;
+  --font-head: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+  --font-neon: 'Tilt Neon', 'Zen Maru Gothic', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   --wrap: 72rem;
   --read: 40rem;
@@ -35,8 +42,8 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(70rem 40rem at 50% 115%, rgb(255 150 60 / 0.14), transparent 70%),
-    radial-gradient(60rem 30rem at 85% -10%, rgb(110 160 255 / 0.12), transparent 70%),
+    radial-gradient(60rem 30rem at 50% -6rem, rgb(255 42 79 / 0.12), transparent 70%),
+    radial-gradient(60rem 30rem at 50% 115%, rgb(255 92 138 / 0.07), transparent 70%),
     var(--bg);
   background-attachment: fixed;
   color: var(--ink);
@@ -58,7 +65,7 @@ p, li, dd, figcaption, blockquote {
 img { max-width: 100%; height: auto; display: block; }
 
 a { color: var(--accent); text-underline-offset: 0.2em; }
-::selection { background: rgb(255 179 92 / 0.35); }
+::selection { background: rgb(255 92 138 / 0.35); }
 a:hover { text-decoration-thickness: 2px; }
 
 :focus-visible {
@@ -133,20 +140,25 @@ h1, h2, h3 {
   min-height: 44px;
   padding: 0.6rem 1.25rem;
   border-radius: 999px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
+  border: 2px solid var(--tube);
+  background: transparent;
+  color: var(--tube);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
+  text-shadow: 0 0 6px var(--accent);
+  box-shadow: 0 0 6px var(--accent), 0 0 16px rgb(255 92 138 / 0.5), inset 0 0 8px rgb(255 92 138 / 0.45);
   text-decoration: none;
   cursor: pointer;
 }
-.button { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
-.button:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 24px rgb(255 160 70 / 0.3); }
+.button { transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+.button:hover { background: rgb(255 92 138 / 0.12); box-shadow: 0 0 8px var(--accent), 0 0 28px var(--accent), inset 0 0 12px rgb(255 92 138 / 0.6); }
 .button--ghost {
-  background: transparent;
-  color: var(--accent);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-shadow: none;
+  box-shadow: none;
 }
+.button--ghost:hover { background: transparent; border-color: var(--cool); box-shadow: 0 0 12px rgb(127 231 255 / 0.3); }
 
 .chip {
   display: inline-block;
@@ -190,7 +202,7 @@ a.chip:hover { border-color: var(--accent); color: var(--accent); }
   border-left: 3px solid var(--warm);
   color: var(--muted);
 }
-.prose strong { background: linear-gradient(transparent 62%, rgb(255 179 92 / 0.32) 62%); color: #fff; }
+.prose strong { background: linear-gradient(transparent 62%, rgb(255 92 138 / 0.32) 62%); color: #fff; }
 .prose hr { border: 0; border-top: 1px dashed var(--line); margin-block: 2em; }
 .prose code {
   font-size: 0.9em;
