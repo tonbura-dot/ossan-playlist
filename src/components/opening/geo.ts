@@ -29,11 +29,11 @@ export const HOKKAIDO: LonLat[] = [
   [141.0, 42.3], // 地球岬
   [140.965, 42.305],
   [140.935, 42.33], // 絵鞆半島の先
-  [140.95, 42.34], // 室蘭港の入口（南）
+  [140.95, 42.34], // 港の入口（南）
   [140.985, 42.345],
   [141.02, 42.36], // 港の奥
   [140.99, 42.366],
-  [140.948, 42.355], // 室蘭港の入口（北）
+  [140.948, 42.355], // 港の入口（北）
   [140.91, 42.4],
   [140.86, 42.46], // 伊達
   [140.76, 42.52],
@@ -183,6 +183,6 @@ export const AUSTRALIA: LonLat[] = [
 
 export const WORLD = [ASIA, SAKHALIN, TAIWAN, LUZON, MINDANAO, BORNEO, NEW_GUINEA, AUSTRALIA];
 
-// 室蘭の印（白鳥大橋のまん中）と、橋の両端
-export const MURORAN: LonLat = [140.95, 42.3475];
+// 町の印（白鳥大橋のまん中）と、橋の両端
+export const TOWN: LonLat = [140.95, 42.3475];
 export const BRIDGE: [LonLat, LonLat] = [[140.951, 42.341], [140.949, 42.354]];

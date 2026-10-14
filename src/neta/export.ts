@@ -46,7 +46,7 @@ export function toMarkdown(n: Neta): string {
 /** Claude に記事を書いてもらうための依頼文 */
 export function toRequest(n: Neta): string {
   return [
-    'このネタを「おっさんのプレイリスト」の記事にしてください。いつものユーモアある日記のノリでお願いします。',
+    'このネタを「ikのプレイリスト」の記事にしてください。いつものユーモアある日記のノリでお願いします。',
     '',
     `日付：${n.date}`,
     `カテゴリー：${n.category}`,
