@@ -1,87 +1,25 @@
 ---
-// オープニング演出の見た目。動きは opening.ts。
-// 白鳥大橋の夜景は NightBridge.astro。
-import { SITE } from '../../site.config';
-import { url, formatDate, type Post } from '../../lib/posts';
-import NightBridge from '../NightBridge.astro';
-
-interface Props {
-  posts: Post[];
-}
-const { posts } = Astro.props;
-
-const latest = posts.slice(0, 4);
+// オープニング演出の見た目。動きは opening.ts、ネオン街と部屋の絵は scenes.ts。
+import { streetSvg, roomSvg } from './scenes';
 ---
 <div class="op" id="opening" role="region" aria-label="オープニング演出">
-  <canvas class="op__stars" aria-hidden="true"></canvas>
-
-  <svg class="op__globe" aria-hidden="true" width="100%" height="100%">
-    <defs>
-      <radialGradient id="op-ocean" cx="40%" cy="35%" r="75%">
-        <stop offset="0" stop-color="#2d6c9c" />
-        <stop offset="0.6" stop-color="#174270" />
-        <stop offset="1" stop-color="#0a2140" />
-      </radialGradient>
-      <radialGradient id="op-shade" cx="35%" cy="30%" r="80%">
-        <stop offset="0.55" stop-color="#000" stop-opacity="0" />
-        <stop offset="1" stop-color="#000" stop-opacity="0.55" />
-      </radialGradient>
-      <clipPath id="op-globe-clip"><circle class="op__globe-clip" cx="0" cy="0" r="0" /></clipPath>
-    </defs>
-    <circle class="op__globe-ocean" fill="url(#op-ocean)" cx="0" cy="0" r="0" />
-    <g clip-path="url(#op-globe-clip)">
-      <path class="op__globe-land" d="" />
-      <path class="op__globe-japan" d="" />
-    </g>
-    <circle class="op__globe-shade" fill="url(#op-shade)" cx="0" cy="0" r="0" />
-    <circle class="op__globe-rim" cx="0" cy="0" r="0" />
-  </svg>
-
-  <svg class="op__map" aria-hidden="true" width="100%" height="100%" viewBox="0 0 2000 2000" preserveAspectRatio="xMidYMid slice">
-    <rect x="-4000" y="-4000" width="12000" height="12000" class="op__map-sea" />
-    <g class="op__map-grid"></g>
-    <g class="op__map-land"></g>
-    <g class="op__map-marks">
-      <circle class="op__ping" r="0" />
-      <circle class="op__ping" r="0" />
-      <circle class="op__marker" r="0" />
-    </g>
-  </svg>
-
-  <div class="op__bridge" aria-hidden="true">
-    <div class="op__bridge-art">
-      <NightBridge id="op" />
+  <div class="op__stage">
+    <div class="op__scene op__street">
+      <svg width="1600" height="900" viewBox="0 0 1600 900" aria-hidden="true" set:html={streetSvg}></svg>
+    </div>
+    <div class="op__scene op__room">
+      <svg width="1600" height="900" viewBox="0 0 1600 900" aria-hidden="true" set:html={roomSvg}></svg>
+      <canvas class="op__tv-static" width="73" height="72" aria-hidden="true"></canvas>
+      <div class="op__tv-glass" aria-hidden="true"></div>
     </div>
   </div>
+  <canvas class="op__fx op__rain" aria-hidden="true"></canvas>
+  <canvas class="op__fx op__static" aria-hidden="true"></canvas>
+  <div class="op__fx op__scan" aria-hidden="true"></div>
+  <div class="op__fx op__black" aria-hidden="true"></div>
 
-  <canvas class="op__snow" aria-hidden="true"></canvas>
-  <div class="op__white" aria-hidden="true"></div>
-
-  <div class="op__captions" aria-hidden="true">
-    <p class="op__caption" data-at="1.6"><span class="big">地球</span><span class="small">EARTH</span></p>
-    <p class="op__caption" data-at="4.0"><span class="big">日本</span><span class="small">JAPAN — 36°N 138°E</span></p>
-    <p class="op__caption" data-at="5.1"><span class="big">北海道</span><span class="small">HOKKAIDO — 43°N 142°E</span></p>
-    <p class="op__caption" data-at="8.4"><span class="big">白鳥大橋</span><span class="small">HAKUCHO BRIDGE</span></p>
-  </div>
-
-  <div class="op__list">
-    <div class="op__list-inner">
-      <p class="op__site">{SITE.name}</p>
-      <p class="op__heading">記事一覧</p>
-      <ol>
-        {latest.map((p, i) => (
-          <li style={`--i:${i}`}>
-            <a href={url(`posts/${p.id}/`)}>
-              <span class="op__title">{p.data.title}</span>
-              <span class="op__date">{formatDate(p.data.date)}・{p.data.category}</span>
-            </a>
-          </li>
-        ))}
-      </ol>
-    </div>
-  </div>
-
-  <button class="op__skip" type="button">スキップ <span aria-hidden="true">›</span></button>
+  <button class="op__btn op__skip" type="button">スキップ <span aria-hidden="true">›</span></button>
+  <button class="op__btn op__sound" type="button" aria-pressed="false">音をつける</button>
 </div>
 
 <style>
@@ -90,169 +28,44 @@ const latest = posts.slice(0, 4);
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: #04060d;
+    background: #000;
     color: #fff;
     overflow: hidden;
     transition: opacity 0.45s ease;
   }
   :global(html.op-play) .op { display: block; }
   :global(html.op-play body) { overflow: hidden; }
+  .op.is-thin { background: transparent; }
   .op.is-leaving { opacity: 0 !important; pointer-events: none; }
 
-  .op > canvas, .op > svg, .op__bridge, .op__white, .op__list {
+  /* 絵は 1600×900 の舞台に描き、カメラの動きは舞台ごと拡大・移動する */
+  .op__stage { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; }
+  .op__scene { position: absolute; inset: 0; }
+  .op__scene svg { position: absolute; left: 0; top: 0; overflow: visible; }
+
+  /* ブラウン管の画面（絵の座標に合わせて置く） */
+  .op__tv-static, .op__tv-glass { position: absolute; left: 1080px; top: 424px; width: 146px; height: 144px; border-radius: 18px; }
+  .op__tv-static { image-rendering: pixelated; background: #222; }
+  .op__tv-glass {
+    background:
+      radial-gradient(120% 90% at 30% 22%, rgb(255 255 255 / 0.22), transparent 42%),
+      radial-gradient(closest-side, transparent 70%, rgb(0 0 0 / 0.55));
+    box-shadow: inset 0 0 14px rgb(0 0 0 / 0.8);
+  }
+
+  .op__fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .op__static { image-rendering: pixelated; opacity: 0; }
+  .op__scan { opacity: 0; background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.45) 0 2px, transparent 2px 4px); }
+  .op__black { background: #000; }
+
+  .op__btn {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .op__globe, .op__map, .op__bridge { opacity: 0; }
-
-  /* 地球 */
-  .op__globe-land { fill: #4b6b5a; stroke: #7fa88f; stroke-width: 0.6; stroke-linejoin: round; }
-  .op__globe-japan { fill: #e9c27a; stroke: #fff3d6; stroke-width: 0.8; stroke-linejoin: round; }
-  .op__globe-rim { fill: none; stroke: #8fd0ff; stroke-opacity: 0.45; stroke-width: 2; }
-  .op__globe { filter: drop-shadow(0 0 28px rgb(110 180 255 / 0.35)); }
-
-  /* 地図 */
-  .op__map-sea { fill: #0b1a2e; }
-  .op__map-grid :global(line) { stroke: #9cc3d9; stroke-opacity: 0.1; stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .op__map-land :global(path) {
-    fill: #213b51;
-    stroke: #cfe6f2;
-    stroke-opacity: 0.85;
-    stroke-width: 1.4;
-    stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
-  }
-  .op__map-marks :global(.op__map-bridge) { stroke: #ffffff; stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: 0; }
-  .op__marker { fill: #ffd27a; opacity: 0; filter: drop-shadow(0 0 6px #ffb84a); }
-  .op__ping { fill: none; stroke: #ffd27a; stroke-width: 1.5; vector-effect: non-scaling-stroke; opacity: 0; }
-
-  /* 白鳥大橋 */
-  .op__bridge {
-    /* 空と海は画面いっぱいに。水平線の位置は SVG（1600×900, meet）の y=600 に合わせる */
-    --horizon: calc(50% + 150 * 100vw / 1600);
-    background: linear-gradient(
-      to bottom,
-      #060b1f 0%,
-      #14204a calc(var(--horizon) * 0.55),
-      #3b3f6e calc(var(--horizon) * 0.85),
-      #a7706a var(--horizon),
-      #1a2442 var(--horizon),
-      #070b18 100%
-    );
-  }
-  @media (min-aspect-ratio: 16/9) {
-    .op__bridge { --horizon: calc(50% + 150 * 100vh / 900); }
-  }
-  .op__bridge-art {
-    position: absolute;
-    inset: 0;
-    transform-origin: 50% var(--horizon);
-    will-change: transform;
-  }
-
-  .op__white { background: #fbfaf7; opacity: 0; }
-
-  /* 場所の名前 */
-  .op__captions {
-    position: absolute;
-    left: clamp(1rem, 5vw, 3rem);
-    bottom: clamp(1.5rem, 7vh, 4rem);
-    pointer-events: none;
-  }
-  .op__caption {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    margin: 0;
-    display: grid;
-    gap: 0.25rem;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.6s ease, transform 0.8s ease;
-    text-shadow: 0 1px 12px rgb(0 0 0 / 0.6);
-  }
-  .op__caption.is-on { opacity: 1; transform: none; }
-  .op__caption .big {
-    font-family: var(--font-head);
-    font-size: clamp(1.8rem, 6vw, 3rem);
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    line-height: 1.2;
-  }
-  .op__caption .small {
-    font-size: clamp(0.65rem, 1.8vw, 0.8rem);
-    letter-spacing: 0.3em;
-    opacity: 0.75;
-  }
-
-  /* 最後の記事一覧 */
-  .op__list {
-    display: grid;
-    place-items: center;
-    padding: 4.5rem var(--gutter) 3rem;
-    color: #24231f;
-    visibility: hidden;
-    overflow-y: auto;
-  }
-  .op__list.is-on { visibility: visible; }
-  .op__list-inner { width: min(100%, 46rem); }
-  .op__site, .op__heading, .op__list li {
-    opacity: 0;
-    transform: translateY(18px);
-    transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
-  }
-  .op__list.is-on .op__site,
-  .op__list.is-on .op__heading,
-  .op__list.is-on li { opacity: 1; transform: none; }
-  .op__site {
-    margin: 0;
-    font-size: 0.85rem;
-    letter-spacing: 0.3em;
-    color: #2c6a87;
-  }
-  .op__heading {
-    margin: 0.25rem 0 1.5rem;
-    font-family: var(--font-head);
-    font-size: clamp(2.6rem, 11vw, 5.5rem);
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: 0.08em;
-    transition-delay: 0.12s;
-  }
-  .op__list ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid #d9d3c5; }
-  .op__list li {
-    border-bottom: 1px solid #d9d3c5;
-    transition-delay: calc(0.3s + var(--i) * 0.14s);
-  }
-  .op__list a {
-    display: grid;
-    gap: 0.15rem;
-    padding: 0.85rem 0.25rem;
-    color: inherit;
-    text-decoration: none;
-  }
-  .op__list a:hover .op__title { color: #2c6a87; }
-  .op__title {
-    font-family: var(--font-head);
-    font-size: clamp(1.15rem, 3.6vw, 1.6rem);
-    font-weight: 600;
-    line-height: 1.45;
-  }
-  .op__date { font-size: 0.8rem; color: #6c675e; }
-
-  /* スキップ */
-  .op__skip {
-    position: absolute;
-    top: max(1rem, env(safe-area-inset-top));
-    right: max(1rem, env(safe-area-inset-right));
+    z-index: 2;
     min-height: 44px;
     padding: 0.5rem 1.1rem;
     border-radius: 999px;
     border: 1px solid rgb(255 255 255 / 0.45);
-    background: rgb(0 0 0 / 0.35);
+    background: rgb(0 0 0 / 0.45);
     color: #fff;
     font: inherit;
     font-size: 0.9rem;
@@ -260,19 +73,12 @@ const latest = posts.slice(0, 4);
     cursor: pointer;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    z-index: 2;
   }
-  .op__skip:hover { background: rgb(0 0 0 / 0.55); }
-  .op__skip:focus-visible { outline: 3px solid #ffd27a; outline-offset: 3px; }
-  .op__list.is-on ~ .op__skip {
-    color: #24231f;
-    border-color: #bdb6a6;
-    background: rgb(255 255 255 / 0.7);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .op__caption, .op__site, .op__heading, .op__list li { transform: none; }
-  }
+  .op__btn:hover { background: rgb(0 0 0 / 0.6); }
+  .op__btn:focus-visible { outline: 3px solid var(--cool); outline-offset: 3px; }
+  .op__skip { top: max(1rem, env(safe-area-inset-top)); right: max(1rem, env(safe-area-inset-right)); }
+  .op__sound { bottom: max(1rem, env(safe-area-inset-bottom)); left: max(1rem, env(safe-area-inset-left)); font-size: 0.8rem; }
+  .op__sound[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 12px rgb(255 92 138 / 0.5); }
 </style>
 
 <script>

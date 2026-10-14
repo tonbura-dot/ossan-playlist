@@ -103,7 +103,7 @@ for (const file of htmlFiles) {
 
 // ---- トップページのオープニング ----
 const index = await readFile(join(root, 'index.html'), 'utf8');
-for (const part of ['id="opening"', 'op__skip', 'op__globe', 'op__map', 'op__bridge', 'op__snow', 'op__white', 'op__list', 'ossan-opening-seen']) {
+for (const part of ['id="opening"', 'op__skip', 'op__street', 'op__room', 'op__tv-static', 'op__static', 'op-fig', 'ossan-opening-seen']) {
   if (!index.includes(part)) fail(`index.html: オープニングの部品 ${part} がない`);
 }
 // オープニング以外のページには演出を入れない
