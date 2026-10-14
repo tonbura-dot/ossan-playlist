@@ -1,7 +1,7 @@
-// オープニング演出: 宇宙 → 地球 → 日本 → 北海道 → 室蘭 → 白鳥大橋 → 雪でホワイトアウト → 記事一覧
+// オープニング演出: 宇宙 → 地球 → 日本 → 北海道 → 白鳥大橋 → 雪でホワイトアウト → 記事一覧
 // 全体を1本の時間軸（秒）で管理し、各レイヤーの見た目を毎フレーム時間から計算する。
 
-import { JAPAN, WORLD, MURORAN, BRIDGE, type LonLat } from './geo';
+import { JAPAN, WORLD, TOWN, BRIDGE, type LonLat } from './geo';
 
 export const STORAGE_KEY = 'ossan-opening-seen';
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -11,7 +11,7 @@ const TL = {
   earth: [1.3, 3.1], // 地球が近づきながら回る
   dive: [3.1, 4.5], // 地球から日本へ
   hokkaido: [4.8, 6.1],
-  muroran: [6.3, 7.8],
+  town: [6.3, 7.8],
   marker: 7.2,
   bridge: [8.0, 8.8], // 橋の場面へ切り替え
   push: [8.0, 11.0], // 橋にゆっくり寄る
@@ -36,7 +36,7 @@ const camAt = (lonlat: LonLat, s: number): Cam => {
 const GLOBE_CENTER: LonLat = [137.5, 38.5];
 const CAM_JAPAN = camAt(GLOBE_CENTER, 2000);
 const CAM_HOKKAIDO = camAt([142.8, 43.4], 760);
-const CAM_MURORAN = camAt(MURORAN, 26);
+const CAM_TOWN = camAt(TOWN, 26);
 const R_JAPAN = R_TO_S / CAM_JAPAN.s; // 地図の日本と同じ縮尺になる地球の半径
 
 // ---- 小さな道具 ----
@@ -179,7 +179,7 @@ export function runOpening(root: HTMLElement) {
   const [b1, b2] = BRIDGE.map(proj);
   const bridgeLine = svgEl('line', { class: 'op__map-bridge', x1: b1[0], y1: b1[1], x2: b2[0], y2: b2[1] });
   mapSvg.querySelector('.op__map-marks')!.appendChild(bridgeLine);
-  const [mx, my] = proj(MURORAN);
+  const [mx, my] = proj(TOWN);
   const marker = mapSvg.querySelector<SVGCircleElement>('.op__marker')!;
   const pings = Array.from(mapSvg.querySelectorAll<SVGCircleElement>('.op__ping'));
   marker.setAttribute('cx', String(mx));
@@ -300,10 +300,10 @@ export function runOpening(root: HTMLElement) {
     if (t < TL.hokkaido[0]) {
       cam = { x: CAM_JAPAN.x, y: CAM_JAPAN.y, s: R_TO_S / Math.max(r, 0.01) };
       if (reduce) cam = CAM_JAPAN;
-    } else if (t < TL.muroran[0]) {
+    } else if (t < TL.town[0]) {
       cam = camLerp(CAM_JAPAN, CAM_HOKKAIDO, motion(prog(t, TL.hokkaido)));
     } else {
-      cam = camLerp(CAM_HOKKAIDO, CAM_MURORAN, motion(prog(t, TL.muroran)));
+      cam = camLerp(CAM_HOKKAIDO, CAM_TOWN, motion(prog(t, TL.town)));
     }
     const op = reduce ? prog(t, TL.dive) : clamp((r - 0.85) / 0.6);
     const fadeForBridge = 1 - prog(t, TL.bridge);
@@ -325,7 +325,7 @@ export function runOpening(root: HTMLElement) {
     }
     mapSvg.setAttribute('viewBox', `${(cam.x - w / 2).toFixed(3)} ${(cam.y - h / 2).toFixed(3)} ${w.toFixed(3)} ${h.toFixed(3)}`);
 
-    // 室蘭の印（画面上の大きさを一定に保つ）
+    // 町の印（画面上の大きさを一定に保つ）
     const unit = cam.s / M; // 1px あたりの地図単位
     const mOn = clamp((t - TL.marker) / 0.4);
     marker.setAttribute('r', (7 * unit).toFixed(4));
