@@ -106,6 +106,8 @@ const index = await readFile(join(root, 'index.html'), 'utf8');
 for (const part of ['id="opening"', 'op__skip', 'op__street', 'op__room', 'op__tv-static', 'op__static', 'op-fig', 'ossan-opening-seen']) {
   if (!index.includes(part)) fail(`index.html: オープニングの部品 ${part} がない`);
 }
+// アクセスカウンター
+if (!index.includes('id="access-counter"')) fail('index.html: アクセスカウンターがない');
 // オープニング以外のページには演出を入れない
 for (const file of htmlFiles) {
   if (rel(file) !== 'index.html' && (await readFile(file, 'utf8')).includes('id="opening"')) {

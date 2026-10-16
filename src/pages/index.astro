@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import Base from '../layouts/Base.astro';
 import Opening from '../components/opening/Opening.astro';
+import AccessCounter from '../components/AccessCounter.astro';
 import { SITE } from '../site.config';
 import { getPosts, url, categoriesOf, isoDate } from '../lib/posts';
 
@@ -65,6 +66,7 @@ const shortDate = (d: Date) => d.toLocaleDateString('ja-JP', { timeZone: 'Asia/T
         {latest && <a class="button" href={url(`posts/${latest.id}/`)}>▶ 最新回を聴く</a>}
         <a class="button button--ghost" href={url('?opening=1')}>オープニングを見る</a>
       </div>
+      <AccessCounter />
     </div>
   </section>
 
