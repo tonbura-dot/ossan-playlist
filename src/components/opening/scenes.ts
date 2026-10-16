@@ -28,6 +28,98 @@ const wallQuad = (X: number, z0: number, z1: number, h0: number, h1: number): Pt
 
 const prefix = (s: string) => s.replace(/\bid="([^"]+)"/g, 'id="op-$1"').replace(/url\(#([^)]+)\)/g, 'url(#op-$1)');
 
+// ---- スプレーの落書き ----
+// 架空のタグ（クルー名っぽい英字）を、左右の壁の面に沿ってゆがめて描く。
+// 1文字ずつ壁の上の位置を決め、その場所の透視のゆがみ（matrix）で描くので、奥ほど細く小さくなる。
+const TAG_FONT = "'Sedgwick Ave Display', 'Permanent Marker', cursive";
+const BUBBLE_FONT = "'Rubik Spray Paint', 'Tilt Neon', sans-serif";
+const WALL_F = 800; // 壁に沿った長さを奥行き z に直す係数
+/** 壁 X の、奥行き z・高さ h の点に、壁に貼りついた向きで描くための transform */
+function onWall(X: number, z: number, h: number) {
+  const k = X < 0 ? 1 : -1; // 右の壁は、通りから見て手前に向かって読めるよう向きを逆にする
+  const a = (-X / (z * z)) * (k / WALL_F);
+  const b = (-(EYE - h) / (z * z)) * (k / WALL_F);
+  const [e, f] = P(X, z, h);
+  return `matrix(${a.toFixed(4)},${b.toFixed(4)},0,${(1 / z).toFixed(4)},${e.toFixed(1)},${f.toFixed(1)})`;
+}
+/** だいたいの文字幅（em） */
+const charW = (c: string, bubble: boolean) => (/[iljI1!.]/.test(c) ? 0.32 : /[mwMW]/.test(c) ? 0.85 : bubble ? 0.68 : 0.55);
+
+function graffiti(): string {
+  let sd = 7;
+  const R = () => ((sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296);
+  // 壁に沿って1文字ずつ並べる。rot は文字列全体の傾き（度、マイナスで右上がり）
+  const along = (X: number, z: number, h: number, text: string, size: number, rot: number, bubble: boolean, draw: (c: string, i: number) => string) => {
+    const dir = X < 0 ? 1 : -1;
+    const slope = Math.sin((-rot * Math.PI) / 180);
+    let u = 0, o = '';
+    [...text].forEach((c, i) => {
+      const jit = bubble ? 0 : (R() - 0.5) * size * 0.12;
+      o += `<g transform="${onWall(X, z + (dir * u) / WALL_F, h + u * slope + jit)}"><g transform="rotate(${(rot + (bubble ? 0 : (R() - 0.5) * 10)).toFixed(1)})">${draw(c, i)}</g></g>`;
+      u += charW(c, bubble) * size * (bubble ? 0.86 : 1);
+    });
+    return o;
+  };
+  const drip = (size: number, color: string) => {
+    if (R() > 0.55) return '';
+    const x = ((R() - 0.2) * size * 0.4).toFixed(0), len = (size * (0.15 + R() * 0.5)).toFixed(0), w = (size * 0.025 + 1).toFixed(1);
+    return `<rect x="${x}" y="0" width="${w}" height="${len}" rx="${w}" fill="${color}" opacity="0.7"/>`;
+  };
+  // 手書きのタグ（うすいにじみを太い半透明のふちで出す）
+  const tag = (X: number, z: number, h: number, text: string, size: number, color: string, rot = -6) =>
+    along(X, z, h, text, size, rot, false, (c) =>
+      `<text font-family="${TAG_FONT}" font-size="${size}" fill="${color}" stroke="${color}" stroke-width="${(size * 0.07).toFixed(1)}" stroke-opacity="0.18" paint-order="stroke" opacity="0.88">${c}</text>${drip(size, color)}`);
+  // ふくらんだ文字（スローアップ）：黒いふち、塗り、白いハイライト
+  const bubble = (X: number, z: number, h: number, text: string, size: number, fill: string, rot = -4) =>
+    along(X, z, h, text, size, rot, true, (c) =>
+      `<g font-family="${BUBBLE_FONT}" font-size="${size}"><text fill="#000" stroke="#000" stroke-width="${(size * 0.14).toFixed(1)}" stroke-linejoin="round" opacity="0.85">${c}</text><text fill="${fill}" stroke="#0a0408" stroke-width="${(size * 0.05).toFixed(1)}" stroke-linejoin="round">${c}</text><text fill="none" stroke="#fff" stroke-width="${(size * 0.012).toFixed(1)}" opacity="0.55" transform="translate(${(-size * 0.02).toFixed(1)},${(-size * 0.02).toFixed(1)})">${c}</text></g>${drip(size, fill)}`);
+  // 破れたステッカーやポスター
+  const sticker = (X: number, z: number, h: number, w: number, hh: number, color: string) =>
+    `<g transform="${onWall(X, z, h)}"><rect width="${w}" height="${hh}" fill="${color}" opacity="0.55" transform="rotate(${(R() * 10 - 5).toFixed(1)})"/><rect x="${w * 0.15}" y="${hh * 0.3}" width="${w * 0.7}" height="${hh * 0.12}" fill="#0a0408" opacity="0.6"/></g>`;
+
+  let o = '';
+  // 落書きの上から塗りつぶした跡（バフ）。落書きより先に描く
+  for (const [X, z0, z1, h0, h1] of [[-1200, 2.9, 3.2, 60, 330], [1200, 2.5, 2.9, 80, 360]] as const) {
+    o += `<polygon points="${pts(wallQuad(X, z0, z1, h0, h1))}" fill="#3a2a30" opacity="0.5"/>`;
+  }
+  // 左の壁（看板 CLUB と VINYL のまわりはあけておく）
+  o += bubble(-1200, 1.72, 110, 'NITE', 170, '#ff3d7f');
+  o += tag(-1200, 1.72, 400, 'IKR', 100, '#b6ff3a', -10);
+  o += tag(-1200, 2.05, 620, 'krush', 120, '#f4f1f2');
+  o += tag(-1200, 2.4, 1000, 'ZEKE', 140, '#f4f1f2', -3); // 高いところ
+  o += tag(-1200, 2.9, 950, 'ghost', 120, '#4fd8ff', -5);
+  o += tag(-1200, 2.6, 720, 'lowfi', 110, '#ffd23a', -4);
+  o += sticker(-1200, 2.6, 440, 80, 100, '#e8e0d0') + sticker(-1200, 2.75, 380, 60, 60, '#ffd23a');
+  o += bubble(-1200, 2.45, 120, 'VHS', 160, '#4fd8ff', -2);
+  o += tag(-1200, 3.0, 470, 'dust', 110, '#c08cff', -8);
+  o += tag(-1200, 3.2, 140, 'STATIC', 100, '#ff8a2a', -5);
+  o += bubble(-1200, 3.9, 230, 'RAW', 150, '#f4f1f2', -3);
+  o += tag(-1200, 4.3, 520, 'nosleep', 100, '#ff3d7f', -6);
+  o += tag(-1200, 4.6, 260, 'VX', 90, '#b6ff3a', -4);
+  // 右の壁（看板 BAR と 24 のまわりはあけておく）
+  o += bubble(1200, 2.4, 120, 'SOBR', 170, '#b6ff3a', -3);
+  o += tag(1200, 2.1, 560, 'fm24', 120, '#ff3d7f', -9);
+  o += tag(1200, 2.4, 900, 'NITE', 150, '#c08cff', -4);
+  o += sticker(1200, 2.6, 440, 80, 100, '#e8e0d0');
+  o += tag(1200, 2.7, 420, 'ghost', 90, '#f4f1f2', -6);
+  o += tag(1200, 2.9, 200, 'krush', 110, '#4fd8ff', -6);
+  o += tag(1200, 3.1, 680, 'ikr', 110, '#f4f1f2', -7);
+  o += bubble(1200, 4.2, 300, 'ONAIR', 130, '#ff8a2a', -4);
+  o += tag(1200, 3.9, 760, 'RAW', 100, '#ffd23a', -5);
+  o += tag(1200, 4.6, 180, 'dust', 100, '#ffd23a', -5);
+  // 突き当たりの家とビルにも（スマホではここが主役なので多めに）
+  const flat = (x: number, y: number, text: string, size: number, color: string, rot = -6) =>
+    `<text x="${x}" y="${y}" font-family="${TAG_FONT}" font-size="${size}" fill="${color}" opacity="0.82" transform="rotate(${rot} ${x} ${y})">${text}</text>`;
+  const flatBubble = (x: number, y: number, text: string, size: number, fill: string, rot = -3) =>
+    `<g font-family="${BUBBLE_FONT}" font-size="${size}" transform="rotate(${rot} ${x} ${y})"><text x="${x}" y="${y}" fill="#000" stroke="#000" stroke-width="${size * 0.15}" stroke-linejoin="round">${text}</text><text x="${x}" y="${y}" fill="${fill}" stroke="#0a0408" stroke-width="${size * 0.06}">${text}</text></g>`;
+  o += flat(612, 548, 'nite', 15, '#f4f1f2', -8) + flat(880, 560, 'ikr', 13, '#b6ff3a', -5) + flat(912, 436, 'krsh', 12, '#ff3d7f', 0);
+  o += flatBubble(706, 522, 'DUB', 24, '#ff3d7f', -4) + flat(764, 556, 'zeke', 17, '#f4f1f2', -4) + flat(602, 512, 'nosleep', 11, '#ff8a2a', -12);
+  o += flat(748, 446, 'VHS', 18, '#4fd8ff', -5) + flat(846, 414, 'fm24', 15, '#ffd23a', -7) + flat(612, 446, 'ghost', 15, '#c08cff', -4);
+  o += flatBubble(900, 250, 'RAW', 34, '#4fd8ff') + flatBubble(568, 262, 'IKR', 26, '#b6ff3a', -5);
+  o += flat(560, 336, 'STATIC', 22, '#f4f1f2', -5) + flat(958, 318, 'nite', 24, '#ff3d7f', -8) + flat(966, 452, 'dust', 14, '#ffd23a', -14);
+  return o;
+}
+
 function buildStreet(): string {
   let s = `<defs>
     ${glow('gPink', '#ff3d7f')}${glow('gOrange', '#ff8a2a')}${glow('gIce', '#4fd8ff')}${glow('gRed', '#ff2a4f', 3, 10)}${glow('gWhite', '#bfefff', 5, 18)}
@@ -38,7 +130,7 @@ function buildStreet(): string {
     <linearGradient id="ground" gradientUnits="userSpaceOnUse" x1="0" y1="565" x2="0" y2="1400"><stop offset="0" stop-color="#3e1430"/><stop offset="0.35" stop-color="#20091b"/><stop offset="1" stop-color="#0e040c"/></linearGradient>
     <linearGradient id="wallL" gradientUnits="userSpaceOnUse" x1="560" y1="0" x2="-600" y2="0"><stop offset="0" stop-color="#2a0d25"/><stop offset="0.5" stop-color="#180615"/><stop offset="1" stop-color="#0a0209"/></linearGradient>
     <linearGradient id="wallR" gradientUnits="userSpaceOnUse" x1="1040" y1="0" x2="2200" y2="0"><stop offset="0" stop-color="#2a0d25"/><stop offset="0.5" stop-color="#170615"/><stop offset="1" stop-color="#090208"/></linearGradient>
-    <radialGradient id="haze" cx="800" cy="450" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff4f8b" stop-opacity="0.13"/><stop offset="1" stop-color="#ff4f8b" stop-opacity="0"/></radialGradient>
+    <radialGradient id="haze" cx="800" cy="450" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff4f8b" stop-opacity="0.09"/><stop offset="1" stop-color="#ff4f8b" stop-opacity="0"/></radialGradient>
     <linearGradient id="doorSpill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfefff" stop-opacity="0.22"/><stop offset="1" stop-color="#bfefff" stop-opacity="0"/></linearGradient>
   </defs>`;
 
@@ -52,8 +144,8 @@ function buildStreet(): string {
     const lit = (r * 7 + c * 3) % 5 === 0;
     s += `<rect x="${560 + c * 82}" y="${140 + r * 34}" width="44" height="18" fill="${lit ? '#ff9ab8' : '#160817'}" opacity="${lit ? 0.35 : 1}"/>`;
   }
-  s += `<text x="780" y="292" font-size="34" font-family="'Zen Maru Gothic', sans-serif" font-weight="700" text-anchor="middle" fill="#ffe2c4" filter="url(#gOrange)" letter-spacing="4" id="sign-back">やすらぎ荘</text>`;
-  s += `<text x="780" y="310" font-size="11" font-family="'IBM Plex Mono', monospace" text-anchor="middle" fill="#e6fbff" filter="url(#gIce)" letter-spacing="3">ROOMS ・ 24H</text>`;
+  s += `<text x="780" y="294" font-size="36" font-family="'Tilt Neon', sans-serif" text-anchor="middle" fill="#ffe2c4" filter="url(#gOrange)" letter-spacing="8" id="sign-back">LIQUOR</text>`;
+  s += `<text x="780" y="312" font-size="11" font-family="'IBM Plex Mono', monospace" text-anchor="middle" fill="#e6fbff" filter="url(#gIce)" letter-spacing="3">OPEN TIL DAWN</text>`;
   // 奥の路地（家の右）
   s += `<rect x="960" y="330" width="80" height="240" fill="#12050f"/><rect x="990" y="470" width="20" height="95" fill="#ff9ab8" opacity="0.18" filter="url(#blur4)"/>`;
 
@@ -119,6 +211,9 @@ function buildStreet(): string {
   s += `<rect x="${vm[0][0] + 10}" y="${vm[0][1] + 120}" width="${vm[1][0] - vm[0][0] - 20}" height="70" fill="#c7dbe6"/>`;
   s += `<ellipse cx="${(vm[0][0] + vm[1][0]) / 2}" cy="${vm[1][1] + 40}" rx="120" ry="40" fill="#bfefff" opacity="0.18" filter="url(#blur10)"/>`;
 
+  // ---- 壁一面のスプレーの落書き（タギング） ----
+  s += graffiti();
+
   // 地面に映るネオン
   s += `<g id="refl" filter="url(#blur10)">
     <ellipse cx="170" cy="790" rx="34" ry="130" fill="#ff3d7f" opacity="0.3"/>
@@ -128,11 +223,12 @@ function buildStreet(): string {
     <ellipse cx="846" cy="600" rx="110" ry="30" fill="#ff8fb4" opacity="0.22"/>
   </g>`;
 
-  // 看板：カラオケ（縦）、夜明け（縦）、BAR、酒
-  s += `<g id="sign-l1"><rect x="139" y="6" width="61" height="389" rx="6" fill="#1a0614" stroke="#ffd6e4" stroke-width="2.5" filter="url(#gPink)"/>${vtext('カラオケ', 169.5, 84, 90, 52, '#ffe1ec', 'gPink')}</g>`;
-  s += `<g id="sign-l2"><rect x="450" y="321" width="35" height="153" rx="4" fill="#1a0a06"/>${vtext('夜明け', 467.5, 357, 47, 25, '#ffe3c8', 'gOrange')}</g>`;
+  // 看板：CLUB（縦）、VINYL（縦）、BAR、24（日本語の看板は使わない）
+  const neon = "'Tilt Neon', sans-serif";
+  s += `<g id="sign-l1"><rect x="139" y="6" width="61" height="389" rx="6" fill="#1a0614" stroke="#ffd6e4" stroke-width="2.5" filter="url(#gPink)"/>${vtext('CLUB', 169.5, 90, 88, 60, '#ffe1ec', 'gPink', neon)}</g>`;
+  s += `<g id="sign-l2"><rect x="450" y="321" width="35" height="153" rx="4" fill="#1a0a06"/>${vtext('VINYL', 467.5, 348, 29, 24, '#ffe3c8', 'gOrange', neon)}</g>`;
   s += `<g id="sign-r1"><rect x="1209" y="295" width="127" height="55" rx="8" fill="#06141a" stroke="#d8f7ff" stroke-width="2.5" filter="url(#gIce)"/><text x="1272.5" y="338" font-size="40" font-family="'Tilt Neon', sans-serif" text-anchor="middle" fill="#e6fbff" filter="url(#gIce)" letter-spacing="6">BAR</text></g>`;
-  s += `<g id="sign-r2"><ellipse cx="1150" cy="428" rx="20" ry="27" fill="#ff5a5a" filter="url(#gRed)"/><text x="1150" y="438" font-size="24" font-family="'Zen Maru Gothic', sans-serif" font-weight="700" text-anchor="middle" fill="#2a0508">酒</text></g>`;
+  s += `<g id="sign-r2"><circle cx="1150" cy="428" r="22" fill="#14040a" stroke="#ffd6dc" stroke-width="2.5" filter="url(#gRed)"/><text x="1150" y="437" font-size="24" font-family="${neon}" text-anchor="middle" fill="#ffe6ee" filter="url(#gRed)">24</text></g>`;
 
   // 電線
   s += `<path d="M-400 150Q700 290 2000 70M-400 230Q760 330 2000 190M200 -80Q820 200 1500 250" stroke="#090208" stroke-width="2.5" fill="none"/>`;
@@ -159,7 +255,7 @@ function buildRoom(): string {
     <filter id="rblur14" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="14"/></filter>
     <linearGradient id="rwall" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1c0e1d"/><stop offset="0.5" stop-color="#140a16"/><stop offset="1" stop-color="#0b060c"/></linearGradient>
     <linearGradient id="outside" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14051a"/><stop offset="1" stop-color="#5a1648"/></linearGradient>
-    <linearGradient id="spill" gradientUnits="userSpaceOnUse" x1="700" y1="200" x2="1450" y2="880"><stop offset="0" stop-color="#ff4f8b" stop-opacity="0.34"/><stop offset="0.6" stop-color="#ff4f8b" stop-opacity="0.13"/><stop offset="1" stop-color="#ff4f8b" stop-opacity="0.03"/></linearGradient>
+    <linearGradient id="spill" gradientUnits="userSpaceOnUse" x1="700" y1="200" x2="1450" y2="880"><stop offset="0" stop-color="#ff4f8b" stop-opacity="0.34"/><stop offset="0.6" stop-color="#ff4f8b" stop-opacity="0.09"/><stop offset="1" stop-color="#ff4f8b" stop-opacity="0.03"/></linearGradient>
     <linearGradient id="spillB" gradientUnits="userSpaceOnUse" x1="300" y1="640" x2="420" y2="900"><stop offset="0" stop-color="#7fe7ff" stop-opacity="0.22"/><stop offset="1" stop-color="#7fe7ff" stop-opacity="0"/></linearGradient>
     <pattern id="slats" width="40" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(14)"><rect width="40" height="13" fill="#fff"/></pattern>
     <mask id="slatMask" maskUnits="userSpaceOnUse" x="-500" y="-500" width="3000" height="2000"><rect x="-500" y="-500" width="3000" height="2000" fill="url(#slats)"/></mask>

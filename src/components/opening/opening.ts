@@ -506,7 +506,7 @@ export function runOpening(root: HTMLElement) {
 
   function syncSound() {
     soundBtn.setAttribute('aria-pressed', String(sound.on));
-    soundBtn.textContent = sound.on ? '音を消す' : '音をつける';
+    soundBtn.textContent = sound.on ? 'SOUND OFF' : 'SOUND ON';
   }
 
   resize();
