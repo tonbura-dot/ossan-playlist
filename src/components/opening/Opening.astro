@@ -2,6 +2,8 @@
 // オープニング演出の見た目。動きは opening.ts、ネオン街と部屋の絵は scenes.ts。
 import { streetSvg, roomSvg } from './scenes';
 ---
+<!-- 落書き用の2書体（オープニングだけで使う） -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Spray+Paint&family=Sedgwick+Ave+Display&display=swap" />
 <div class="op" id="opening" role="region" aria-label="オープニング演出">
   <div class="op__stage">
     <div class="op__scene op__street">
@@ -18,8 +20,8 @@ import { streetSvg, roomSvg } from './scenes';
   <div class="op__fx op__scan" aria-hidden="true"></div>
   <div class="op__fx op__black" aria-hidden="true"></div>
 
-  <button class="op__btn op__skip" type="button">スキップ <span aria-hidden="true">›</span></button>
-  <button class="op__btn op__sound" type="button" aria-pressed="false">音をつける</button>
+  <button class="op__btn op__skip" type="button">SKIP <span aria-hidden="true">›</span></button>
+  <button class="op__btn op__sound" type="button" aria-pressed="false">SOUND ON</button>
 </div>
 
 <style>
