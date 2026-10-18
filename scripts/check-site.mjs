@@ -115,6 +115,11 @@ for (const file of htmlFiles) {
   }
 }
 
+// ---- 記事ごとのコメント欄 ----
+for (const file of postPages) {
+  if (!(await readFile(file, 'utf8')).includes('id="comments-title"')) fail(`${rel(file)}: コメント欄がない`);
+}
+
 // ---- 結果 ----
 console.log(`base: ${basePrefix}`);
 console.log(`ページ: ${htmlFiles.length}（記事 ${postPages.length} 本）、確認したリンク: ${linkCount}`);

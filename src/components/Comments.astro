@@ -1,0 +1,102 @@
+---
+// 記事ごとのコメント欄（giscus）。記事の id ごとに GitHub Discussions のスレッドが1つできる。
+// 設定は site.config.ts の comments。categoryId が空なら「準備中」を出すだけで何も読み込まない。
+import { SITE } from '../site.config';
+
+interface Props {
+  term: string; // 記事の id。URL が変わってもコメントがはぐれないよう、パスではなくこれで紐づける
+}
+
+const { term } = Astro.props;
+const { repo, repoId, category, categoryId } = SITE.comments;
+const ready = Boolean(repo && repoId && categoryId);
+// giscus は別ドメインの iframe なので、テーマの CSS は公開 URL で渡す
+const theme = new URL(`${import.meta.env.BASE_URL.replace(/\/?$/, '/')}giscus-neon.css`, Astro.site).href;
+---
+<section class="wrap narrow comments" aria-labelledby="comments-title">
+  <h2 class="comments__title" id="comments-title"><span class="comments__lamp" aria-hidden="true"></span>LETTERS<small>おたより</small></h2>
+  {ready ? (
+    <>
+      <p class="comments__note">感想はこちらにどうぞ。書き込むには GitHub のアカウントが必要です。</p>
+      <div class="comments__box">
+        <script
+          is:inline
+          src="https://giscus.app/client.js"
+          data-repo={repo}
+          data-repo-id={repoId}
+          data-category={category}
+          data-category-id={categoryId}
+          data-mapping="specific"
+          data-term={term}
+          data-strict="1"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme={theme}
+          data-lang="ja"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async
+        ></script>
+      </div>
+    </>
+  ) : (
+    <p class="comments__note comments__note--soon" role="status">おたよりコーナーは準備中です。もうしばらくお待ちください。</p>
+  )}
+</section>
+
+<style>
+  .comments {
+    max-width: calc(var(--read) + var(--gutter) * 2);
+    margin-top: 3rem;
+  }
+  .comments__title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--font-neon);
+    font-weight: 400;
+    font-size: 1.5rem;
+    letter-spacing: 0.12em;
+    color: var(--tube);
+    text-shadow: var(--neon-ice);
+  }
+  .comments__title small {
+    font-family: var(--font-head);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-shadow: none;
+  }
+  /* 小さな ON AIR ランプ */
+  .comments__lamp {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--onair);
+    box-shadow: 0 0 6px var(--onair), 0 0 14px rgb(255 42 79 / 0.6);
+    align-self: center;
+  }
+  .comments__note {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .comments__note--soon {
+    margin-top: 0.9rem;
+    padding: 1rem 1.1rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .comments__box {
+    margin-top: 1rem;
+    padding: clamp(0.75rem, 3vw, 1.25rem);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 0 22px rgb(127 231 255 / 0.06);
+    min-height: 8rem;
+  }
+</style>
