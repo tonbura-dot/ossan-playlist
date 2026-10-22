@@ -16,6 +16,11 @@ export const SITE = {
   // 空のままだとフォームは「準備中」表示になる。
   formspreeId: '',
 
+  // Google Search Console の所有権確認用。Search Console で「URL プレフィックス」に
+  // https://tonbura-dot.github.io/ossan-playlist/ を入れ、確認方法「HTML タグ」を選ぶと出る
+  // <meta name="google-site-verification" content="ここの文字列"> の content の中身を入れる。
+  googleSiteVerification: '',
+
   // アクセス解析。空のままなら何も読み込まない。
   analytics: {
     // Google アナリティクス 4 の測定 ID（例: "G-XXXXXXXXXX"）。管理画面でアクセス数を見る用

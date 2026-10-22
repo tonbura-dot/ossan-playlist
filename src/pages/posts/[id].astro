@@ -14,11 +14,11 @@ export async function getStaticPaths() {
 }
 
 const { post, newer, older } = Astro.props;
-const { title, date, category, image, description } = post.data;
+const { title, date, category, image, description, seoTitle, seoDescription } = post.data;
 const { Content } = await render(post);
 const ogImage = image ? (await getImage({ src: image, width: 1200, format: 'jpg' })).src : undefined;
 ---
-<Base title={title} description={description} image={ogImage}>
+<Base title={seoTitle ?? title} description={seoDescription ?? description} image={ogImage} published={date}>
   <article class="post">
     <header class="wrap narrow post__head">
       <p class="post__meta">

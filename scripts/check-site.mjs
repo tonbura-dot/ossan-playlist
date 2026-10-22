@@ -58,7 +58,7 @@ const htmlFiles = files.filter((f) => f.endsWith('.html'));
 const rel = (f) => relative(root, f).split(sep).join('/');
 
 // ---- 必要なページ ----
-const required = ['index.html', 'posts/index.html', 'profile/index.html', 'contact/index.html', 'privacy/index.html', '404.html'];
+const required = ['index.html', 'posts/index.html', 'profile/index.html', 'contact/index.html', 'privacy/index.html', '404.html', 'sitemap.xml'];
 for (const r of required) {
   if (!(await exists(join(root, r)))) fail(`必要なページがない: ${r}`);
 }

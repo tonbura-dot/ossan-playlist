@@ -118,6 +118,13 @@ npm test         # 本番用に組み立てて、リンク切れなどを自動�
 公開先の URL は `https://<GitHubのユーザー名>.github.io/ossan-playlist/` になります。
 サイトの住所（`SITE` と `BASE_PATH`）は GitHub Actions が自動で渡すので、設定は不要です。
 
+## Google 検索に出す
+
+- サイトマップ（`/sitemap.xml`）は記事を足すと自動で更新される
+- 検索結果のタイトルや説明をページの見出しと変えたい記事は、`seoTitle` / `seoDescription` を書く（ページ上の表示は `title` / `description` のまま）
+- [Google Search Console](https://search.google.com/search-console) で「URL プレフィックス」に `https://tonbura-dot.github.io/ossan-playlist/` を登録する。確認方法「HTML タグ」の content の文字列を `src/site.config.ts` の `googleSiteVerification` に入れて公開し、「確認」を押す
+- 確認できたら「サイトマップ」に `sitemap.xml` を送信。早く載せたい記事は、上の検索窓に記事の URL を入れて「インデックス登録をリクエスト」
+
 ## 後回しにしたもの
 
 独自ドメイン、アクセス解析、アドセンス、RSS、検索、SNS シェアボタン、メールマガジン。
