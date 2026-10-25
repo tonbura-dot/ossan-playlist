@@ -103,7 +103,7 @@ for (const file of htmlFiles) {
 
 // ---- トップページのオープニング ----
 const index = await readFile(join(root, 'index.html'), 'utf8');
-for (const part of ['id="opening"', 'op__skip', 'op__street', 'op__room', 'op__tv-static', 'op__static', 'op-fig', 'ossan-opening-seen']) {
+for (const part of ['id="opening"', 'op__skip', 'op__video', 'opening/opening-1080.mp4', 'opening/opening-720.mp4', 'op__static', 'ossan-opening-seen']) {
   if (!index.includes(part)) fail(`index.html: オープニングの部品 ${part} がない`);
 }
 // アクセスカウンター
