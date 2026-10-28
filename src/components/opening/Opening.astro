@@ -1,20 +1,8 @@
 ---
-// オープニング演出の見た目。動きは opening.ts。
-// 雨の交差点から部屋のテレビまでは動画（public/opening/）、最後の砂嵐からトップページへの切り替えはページの上で描く。
-import { url } from '../../lib/posts';
+// オープニング演出の見た目。絵と動きは opening.ts / pixel.ts（全部ドット絵、その場で描く）。
 ---
 <div class="op" id="opening" role="region" aria-label="オープニング演出">
-  <video
-    class="op__video"
-    muted
-    playsinline
-    preload="auto"
-    aria-hidden="true"
-    data-src-hd={url('opening/opening-1080.mp4')}
-    data-src-sd={url('opening/opening-720.mp4')}
-  ></video>
-  <canvas class="op__fx op__static" aria-hidden="true"></canvas>
-  <div class="op__fx op__scan" aria-hidden="true"></div>
+  <canvas class="op__px" aria-hidden="true"></canvas>
 
   <button class="op__btn op__skip" type="button">SKIP <span aria-hidden="true">›</span></button>
   <button class="op__btn op__sound" type="button" aria-pressed="false">SOUND ON</button>
@@ -36,12 +24,7 @@ import { url } from '../../lib/posts';
   .op.is-thin { background: transparent; }
   .op.is-leaving { opacity: 0 !important; pointer-events: none; }
 
-  .op__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
-  .op.is-thin .op__video { display: none; }
-
-  .op__fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .op__static { image-rendering: pixelated; opacity: 0; }
-  .op__scan { opacity: 0; background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.45) 0 2px, transparent 2px 4px); }
+  .op__px { position: absolute; top: 0; left: 0; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
 
   .op__btn {
     position: absolute;
