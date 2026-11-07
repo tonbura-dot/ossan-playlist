@@ -1,86 +1,58 @@
-// オープニング演出: 雨のネオン街 → 人影が2階建ての家へ（カット割り）→ ドアが閉まる
-// → 薄暗い部屋のラジオとブラウン管テレビ → テレビに寄って砂嵐 → 砂嵐がそのままトップページに。
-// 全体を1本の時間軸（秒）で管理し、各レイヤーの見た目を毎フレーム時間から計算する。
-// 絵そのものは scenes.ts。
+// オープニング演出（マザー2がコンセプトのドット絵）:
+// 宇宙でゆっくり回る地球 → だんだん寄って、夜のネオンの街へ → 街の路地へ寄る
+// → 路地裏の外階段を上がってドアの中へ → 部屋のジュークボックス → 光にズームしてトップページへ。
+// 絵は pixel.ts。小さなキャンバスに描いて、ドットのまま拡大して見せる。
 
-import { VX, VY, EYE } from './scenes';
+import { CITY_H, CITY_TARGET, CITY_W, clamp, dither, drawAlley, drawCity, drawClouds, drawEarth, drawRoom, ease, lerp } from './pixel';
 
 export const STORAGE_KEY = 'ossan-opening-seen';
 
 // ---- 時間割（秒） ----
-const TL = {
-  // 人影はカット割り：通りに立つ → 消える → 階段の前にぼんやり → 消える → 登りはじめ
-  standOut: [1.7, 2.5],
-  stairsIn: [2.75, 3.3],
-  stairsOut: [3.75, 4.15],
-  climb: [4.25, 5.4],
-  climbIn: [4.25, 4.45],
-  landing: [5.4, 5.8],
-  doorOpen: [5.65, 5.9],
-  enter: [5.9, 6.3],
-  slam: 6.38,
-  black: [6.95, 7.35],
-  roomIn: [7.4, 8.4],
-  push: [7.3, 10.1], // 部屋の中をゆっくり寄る
-  dive: [10.0, 12.0], // テレビの画面へ飛び込む
-  fullStatic: [11.35, 11.95],
-  reveal: [12.0, 14.4], // 砂嵐がトップページに変わる
-  end: 14.6,
+const T = {
+  earth: [0, 6.0],
+  earthZoom: [2.6, 6.0],
+  earthTurn: [1.8, 5.4],
+  night: [3.4, 5.4],
+  clouds: [5.0, 7.0], // 雲を突き抜けて街へ
+  city: [6.0, 10.2],
+  cityZoom: [6.5, 10.0],
+  alley: [10.2, 14.2],
+  walk: [10.2, 11.7],
+  climb: [11.7, 12.9],
+  landing: [12.9, 13.25],
+  door: [13.1, 13.3],
+  entered: 13.35,
+  slam: 13.55,
+  room: [14.2, 18.0],
+  roomZoom: [15.9, 18.0],
 } as const;
-type Range = readonly [number, number];
+const END = 18.0;
+const REVEAL = 1.6; // ジュークボックスの光 → トップページ
+const FADE = 0.4; // 場面のつなぎ（黒の網かけ）
 
-// ---- 小さな道具 ----
-const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-const prog = (t: number, [a, b]: Range) => clamp((t - a) / (b - a));
-const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
-const zlerp = (a: number, b: number, p: number) => a * Math.pow(b / a, p);
-const easeInOut = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
-const easeOut = (p: number) => 1 - Math.pow(1 - p, 3);
-
-/** ネオンのちらつき（ときどき一瞬暗くなる） */
-function flick(t: number, k = 0) {
-  let f = 0.9 + 0.06 * Math.sin(t * 2.3 + k) + 0.04 * Math.sin(t * 17 + k * 3);
-  if (((t + k) * 1.7) % 3.1 < 0.07) f *= 0.35;
-  return f;
-}
-
-// ---- 砂嵐 ----
-let seed = 1234567;
-const rnd = () => {
-  seed ^= seed << 13;
-  seed ^= seed >>> 17;
-  seed ^= seed << 5;
-  return (seed >>> 0) / 4294967296;
-};
-function noise(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, gain = 1) {
-  const img = ctx.createImageData(w, h);
-  const d = new Uint32Array(img.data.buffer);
-  const roll = ((t * 0.35) % 1) * h; // ゆっくり下がっていく明るい帯
-  for (let y = 0; y < h; y++) {
-    const band = Math.abs(y - roll) < h * 0.06 ? 1.35 : 1;
-    const tear = rnd() < 0.015 ? 0.5 : 1;
-    for (let x = 0; x < w; x++) {
-      let v = rnd() * 255 * band * tear * gain;
-      v = v > 255 ? 255 : v | 0;
-      d[y * w + x] = 0xff000000 | (((v * 0.97) | 0) << 16) | (v << 8) | ((v * 0.95) | 0);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-}
+const prog = (t: number, [a, b]: readonly [number, number]) => clamp((t - a) / (b - a));
+const inside = (t: number, [a, b]: readonly [number, number]) => t >= a && t < b;
 
 // ---- 音（ボタンを押したときだけ。WebAudio でその場で作る） ----
+const m2f = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+// ジュークボックスの曲（8分音符ごと。0 は休み）
+const MELODY = [72, 0, 75, 77, 79, 0, 77, 75, 72, 0, 70, 72, 75, 0, 0, 0, 72, 0, 75, 77, 79, 82, 79, 77, 75, 0, 72, 70, 72, 0, 0, 0];
+const BASS = [36, 43, 41, 43, 36, 43, 46, 43];
+const STEP = 0.2;
+
 class Sound {
   ctx: AudioContext | null = null;
   on = false;
   private master!: GainNode;
-  private buf!: AudioBuffer;
   private g: Record<string, GainNode> = {};
+  private next = 0;
+  private step = 0;
 
   private init() {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return false;
     const ctx = (this.ctx = new AC());
-    const buf = (this.buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate));
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const ch = buf.getChannelData(0);
     for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
     this.master = ctx.createGain();
@@ -89,22 +61,36 @@ class Sound {
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
-    const chain = (name: string, type: BiquadFilterType, freq: number, q = 0.7) => {
+    const gain = (name: string, from: AudioNode) => {
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      from.connect(g);
+      g.connect(this.master);
+      this.g[name] = g;
+    };
+    const filt = (type: BiquadFilterType, freq: number, q = 0.7) => {
       const f = ctx.createBiquadFilter();
       f.type = type;
       f.frequency.value = freq;
       f.Q.value = q;
-      const g = ctx.createGain();
-      g.gain.value = 0;
       src.connect(f);
-      f.connect(g);
-      g.connect(this.master);
-      this.g[name] = g;
+      return f;
     };
-    chain('rain', 'bandpass', 5000, 0.4);
-    chain('hum', 'lowpass', 160);
-    chain('radio', 'bandpass', 1500, 1.4);
-    chain('tv', 'highpass', 700);
+    gain('rain', filt('bandpass', 5000, 0.4));
+    gain('hum', filt('lowpass', 160));
+    // 宇宙の低い音
+    const pad = ctx.createBiquadFilter();
+    pad.type = 'lowpass';
+    pad.frequency.value = 600;
+    for (const m of [45, 52, 57]) {
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = m2f(m);
+      o.detune.value = (m % 7) - 3;
+      o.connect(pad);
+      o.start();
+    }
+    gain('pad', pad);
     src.start();
     return true;
   }
@@ -114,28 +100,37 @@ class Sound {
     this.on = !this.on;
     if (ctx.state === 'suspended') void ctx.resume();
     this.master.gain.setTargetAtTime(this.on ? 1 : 0, ctx.currentTime, 0.05);
+    this.next = 0;
     return this.on;
   }
   set(name: string, v: number) {
-    if (this.ctx) this.g[name].gain.setTargetAtTime(v, this.ctx.currentTime, 0.06);
+    if (this.ctx) this.g[name].gain.setTargetAtTime(v, this.ctx.currentTime, 0.08);
   }
-  burst(freq: number, type: BiquadFilterType, dur: number, vol: number) {
-    if (!this.on || !this.ctx) return;
-    const ctx = this.ctx;
-    const now = ctx.currentTime;
-    const src = ctx.createBufferSource();
-    src.buffer = this.buf;
-    const f = ctx.createBiquadFilter();
-    f.type = type;
-    f.frequency.value = freq;
+  private note(type: OscillatorType, f: number, at: number, dur: number, vol: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = f;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(vol, now);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    src.connect(f);
-    f.connect(g);
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g);
     g.connect(this.master);
-    src.start(now, Math.random());
-    src.stop(now + dur + 0.05);
+    o.start(at);
+    o.stop(at + dur + 0.02);
+  }
+  /** ジュークボックスの曲を少し先まで並べる（部屋にいるあいだ毎フレーム呼ぶ） */
+  tune() {
+    if (!this.on || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    if (this.next < now) this.next = now + 0.05;
+    while (this.next < now + 0.3) {
+      const m = MELODY[this.step % MELODY.length];
+      if (m) this.note('square', m2f(m), this.next, STEP * 0.9, 0.045);
+      if (this.step % 2 === 0) this.note('triangle', m2f(BASS[(this.step / 2) % BASS.length]), this.next, STEP * 1.8, 0.16);
+      this.next += STEP;
+      this.step++;
+    }
   }
   /** ドアが閉まる音 */
   thump() {
@@ -152,7 +147,6 @@ class Sound {
     g.connect(this.master);
     o.start(now);
     o.stop(now + 0.35);
-    this.burst(700, 'lowpass', 0.18, 0.7);
   }
   stop() {
     for (const k in this.g) this.set(k, 0);
@@ -171,296 +165,156 @@ function markSeen() {
 
 // =====================================================================
 export function runOpening(root: HTMLElement) {
-  // 確認用: ?opening=1&ot=7.5 でその秒から、&ofreeze でその場で止める、&oreduce で動きを減らした版
+  // 確認用: ?opening=1&ot=12 でその秒から、&oreduce で動きを減らした版（最後の切り替えだけ）
   const params = new URLSearchParams(location.search);
   const reduce = params.has('oreduce') || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const $ = <T extends Element = SVGElement>(sel: string) => root.querySelector(sel) as T;
-  const stage = $<HTMLElement>('.op__stage');
-  const street = $<HTMLElement>('.op__street');
-  const room = $<HTMLElement>('.op__room');
-  const rainC = $<HTMLCanvasElement>('.op__rain');
-  const fullC = $<HTMLCanvasElement>('.op__static');
-  const tvC = $<HTMLCanvasElement>('.op__tv-static');
-  const scan = $<HTMLElement>('.op__scan');
-  const black = $<HTMLElement>('.op__black');
+  const $ = <T extends Element>(sel: string) => root.querySelector(sel) as T;
+  const cv = $<HTMLCanvasElement>('.op__px');
   const skip = $<HTMLButtonElement>('.op__skip');
   const soundBtn = $<HTMLButtonElement>('.op__sound');
-  const rainX = rainC.getContext('2d')!;
-  const fullX = fullC.getContext('2d')!;
-  const tvX = tvC.getContext('2d')!;
+  const c = cv.getContext('2d')!;
+  // 街と部屋はいったん別のキャンバスに描いてから、ドットのまま拡大する
+  const cityC = document.createElement('canvas');
+  cityC.width = CITY_W;
+  cityC.height = CITY_H;
+  const cityX = cityC.getContext('2d')!;
+  const stage = document.createElement('canvas');
+  const stageX = stage.getContext('2d')!;
 
-  const fig = $('#op-fig');
-  const figblur = $('#op-figblur');
-  const legL = $('#op-legL');
-  const legR = $('#op-legR');
-  const door = $('#op-door');
-  const doorLight = $('#op-door-light');
-  const win2 = $('#op-win2');
-  const onairSmall = $('#op-onair-small');
-  const signs = ['#op-sign-l1', '#op-sign-l2', '#op-sign-r1', '#op-sign-back'].map((s) => $(s));
-  const outside = ['#op-out-pink', '#op-out-orange', '#op-out-blue'].map((s) => $(s));
-  const spill = $('#op-spill');
-  const tvglow = $('#op-tvglow');
-  const needle = $('#op-needle');
-  const waves = $('#op-waves');
-  const dialLight = $('#op-dial-light');
-
-  // オープニングの下にあるページ本体（最後に砂嵐から浮かび上がる）
+  // オープニングの下にあるページ本体（最後に光の中から浮かび上がる）
   const others = Array.from(document.body.children).filter(
     (el): el is HTMLElement => el !== root && el instanceof HTMLElement && el.tagName !== 'SCRIPT',
   );
 
-  // ---- 画面サイズ ----
-  let vw = 0;
-  let vh = 0;
+  // 1ドットの大きさ: 画面の短い辺がだいたい180ドットになるように
+  let W = 0;
+  let H = 0;
   function resize() {
-    vw = window.innerWidth;
-    vh = window.innerHeight;
-    rainC.width = vw;
-    rainC.height = vh;
-    fullC.width = Math.ceil(vw / 3);
-    fullC.height = Math.ceil(vh / 3);
-  }
-
-  // ---- 雨 ----
-  const drops = Array.from({ length: 140 }, () => ({ x: Math.random(), y: Math.random(), l: 0.02 + Math.random() * 0.04, v: 0.9 + Math.random() * 0.8 }));
-  function drawRain(dt: number, alpha: number) {
-    rainX.clearRect(0, 0, vw, vh);
-    if (alpha <= 0) return;
-    rainX.strokeStyle = `rgba(255,190,215,${0.28 * alpha})`;
-    rainX.lineWidth = 1;
-    rainX.beginPath();
-    for (const d of drops) {
-      d.y += d.v * dt;
-      d.x += 0.08 * dt;
-      if (d.y > 1.05) {
-        d.y = -0.05;
-        d.x = Math.random();
-      }
-      rainX.moveTo(d.x * vw, d.y * vh);
-      rainX.lineTo(d.x * vw + d.l * vh * 0.12, (d.y + d.l) * vh);
-    }
-    rainX.stroke();
-  }
-
-  // ---- カメラ（絵の座標 1600×900 のどこを、どの倍率で画面の真ん中に置くか） ----
-  function camera(t: number) {
-    if (t < 7.2) {
-      if (reduce) return { x: 860, y: 460, z: 1.6 };
-      const p1 = easeInOut(prog(t, [1.0, 4.6]));
-      const p2 = easeInOut(prog(t, [4.2, 5.8]));
-      const p3 = prog(t, [5.8, 7.2]);
-      let c = { x: lerp(800, 875, p1), y: lerp(500, 470, p1), z: zlerp(1, 1.9, p1) };
-      c = { x: lerp(c.x, 838, p2), y: lerp(c.y, 438, p2), z: zlerp(c.z, 2.8, p2) };
-      c.z = zlerp(c.z, 3.05, p3);
-      return c;
-    }
-    if (reduce) return { x: 1000, y: 480, z: 1.15 };
-    const p = easeOut(prog(t, TL.push));
-    let c = { x: lerp(900, 1090, p), y: lerp(470, 492, p), z: zlerp(1, 1.4, p) };
-    const d = Math.pow(prog(t, TL.dive), 2.4);
-    const k = Math.min(1, d * 3);
-    c = { x: lerp(c.x, 1153, k), y: lerp(c.y, 496, k), z: zlerp(c.z, 17, d) };
-    return c;
-  }
-
-  // ---- 人影 ----
-  type Pose = { x: number; y: number; h: number; phase: number; swing: number; op: number; blur: number };
-  function figurePose(t: number): Pose | null {
-    let x: number, y: number, h: number;
-    let phase = 0, swing = 0, op = 1, blur = 0;
-    if (t < TL.standOut[1]) {
-      // 通りの手前に立っている → 薄く消えていく
-      const p = prog(t, TL.standOut);
-      const z = 1.2;
-      x = VX - 150 / z;
-      y = VY + EYE / z;
-      h = 230 / z;
-      op = 1 - easeInOut(p);
-      blur = 4 * p;
-    } else if (t < TL.stairsIn[0]) {
-      return null;
-    } else if (t < TL.stairsOut[1]) {
-      // 階段の前にぼんやり出てきて、また消える
-      const pin = prog(t, TL.stairsIn);
-      const pout = prog(t, TL.stairsOut);
-      x = 960;
-      y = 566;
-      h = 46;
-      op = 0.85 * easeInOut(pin) * (1 - easeInOut(pout));
-      blur = 3.5 - 2.2 * pin + 3 * pout;
-    } else if (t < TL.climb[0]) {
-      return null;
-    } else if (t < TL.climb[1]) {
-      // 階段を登りはじめたところから
-      const p = lerp(0.12, 1, prog(t, TL.climb));
-      const pin = prog(t, TL.climbIn);
-      x = lerp(945, 850, p);
-      y = lerp(565, 456, p);
-      h = 46;
-      phase = t * 10;
-      swing = 30;
-      op = pin;
-      blur = 2.5 * (1 - pin);
-    } else if (t < TL.landing[1]) {
-      const p = easeOut(prog(t, TL.landing));
-      x = lerp(850, 818, p);
-      y = 456;
-      h = 46;
-      phase = t * 8;
-      swing = 18 * (1 - p);
-    } else if (t < TL.enter[1] + 0.05) {
-      // ドアの中へ
-      const p = prog(t, TL.enter);
-      x = 818;
-      y = 456 - p * 1.5;
-      h = 46 * (1 - 0.08 * p);
-      op = 1 - p;
-    } else return null;
-    return { x, y, h, phase, swing, op, blur };
-  }
-  function drawFigure(pose: Pose | null, t: number) {
-    if (!pose || pose.op <= 0.001) {
-      fig.setAttribute('opacity', '0');
-      return;
-    }
-    const s = pose.h / 100;
-    const a = Math.sin(pose.phase) * pose.swing;
-    const bob = pose.swing ? -Math.abs(Math.sin(pose.phase)) * 2 : Math.sin(t * 2.2) * 0.4; // 立っているときは呼吸だけ
-    fig.setAttribute('opacity', pose.op.toFixed(3));
-    figblur.setAttribute('stdDeviation', pose.blur.toFixed(2));
-    fig.setAttribute('transform', `translate(${pose.x.toFixed(2)},${pose.y.toFixed(2)}) scale(${s.toFixed(4)}) translate(0,${bob.toFixed(2)})`);
-    legL.setAttribute('transform', `translate(-4,-47) rotate(${(a + 1.5).toFixed(1)})`);
-    legR.setAttribute('transform', `translate(4,-47) rotate(${(-a - 1.5).toFixed(1)})`);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const px = Math.max(2, Math.round(Math.min(vw, vh) / 180));
+    W = Math.ceil(vw / px);
+    H = Math.ceil(vh / px);
+    cv.width = stage.width = W;
+    cv.height = stage.height = H;
+    cv.style.width = `${W * px}px`;
+    cv.style.height = `${H * px}px`;
+    c.imageSmoothingEnabled = false;
   }
 
   // ---- 進行 ----
   const sound = new Sound();
-  const freeze = params.has('ofreeze');
-  let t = clamp(Number(params.get('ot')) || 0, 0, TL.reveal[1]);
+  let t = reduce ? END : Number(params.get('ot')) || 0;
   let last = performance.now();
   let raf = 0;
   let done = false;
-  let lastStep = 0;
-  let slammed = t > TL.slam;
-  let staticTick = 0;
+  let slammed = t > T.slam;
+
+  /** 拡大して写す（ドットはぼかさない） */
+  function zoomed(src: HTMLCanvasElement, fx: number, fy: number, z: number, ax = 0.5, ay = 0.5) {
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, W, H);
+    c.imageSmoothingEnabled = false;
+    const sw = W / z;
+    const sh = H / z;
+    c.drawImage(src, fx - sw * ax, fy - sh * ay, sw, sh, 0, 0, W, H);
+  }
+  /** 場面の出入りを黒の網かけでつなぐ */
+  function fades(t: number, [a, b]: readonly [number, number]) {
+    const p = Math.max(1 - (t - a) / FADE, (t - (b - FADE)) / FADE);
+    if (p > 0) dither(c, p, '#000');
+  }
+
+  function drawEarthScene(t: number) {
+    const z = ease(prog(t, T.earthZoom));
+    const turn = ease(prog(t, T.earthTurn));
+    drawEarth(c, W, H, {
+      lon: lerp(18 + t * 5, 138, turn),
+      lat: lerp(-6, 36, turn),
+      r: Math.min(W, H) * 0.36 * Math.exp(z * Math.log(6)),
+      night: prog(t, T.night),
+      t,
+      target: [138, 36],
+    });
+  }
+
+  function drawCityScene(t: number) {
+    drawCity(cityX, t);
+    const p = ease(prog(t, T.cityZoom));
+    const z = Math.exp(lerp(0, Math.log(4), p));
+    zoomed(cityC, lerp(CITY_W / 2, CITY_TARGET[0], p), lerp(CITY_H / 2 - 30, CITY_TARGET[1], p), z);
+    const out = (t - (T.city[1] - FADE)) / FADE;
+    if (out > 0) dither(c, out, '#000');
+  }
+
+  function drawAlleyScene(t: number) {
+    drawAlley(c, W, H, t, {
+      walk: prog(t, T.walk),
+      climb: prog(t, T.climb),
+      landing: prog(t, T.landing),
+      door: t < T.slam ? prog(t, T.door) : 0,
+      entered: t >= T.entered,
+    });
+    // ドアが閉まった瞬間、画面がゆれる
+    if (t >= T.slam && t < T.slam + 0.12) c.drawImage(cv, 0, 1);
+    fades(t, T.alley);
+  }
+
+  function drawRoomScene(t: number) {
+    stageX.clearRect(0, 0, W, H);
+    const [fx, fy0] = drawRoom(stageX, W, H, t);
+    const fy = fy0 - 4;
+    const p = reduce ? 0 : ease(prog(t, T.roomZoom));
+    const z = Math.exp(lerp(0, Math.log(9), p));
+    zoomed(stage, lerp(W / 2, fx, Math.min(1, p * 1.6)), lerp(H / 2, fy, Math.min(1, p * 1.6)), z);
+    const a = 1 - (t - T.room[0]) / FADE;
+    if (a > 0) dither(c, a, '#000');
+  }
 
   function frame(now: number) {
     // タブが裏に回ったときなどに時間が飛ばないよう、1フレームの進みに上限を設ける
-    const dt = freeze ? 0 : Math.min(0.1, (now - last) / 1000);
+    const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     t += dt;
-    if (t >= TL.end) return finish();
-
     try {
-      draw(t, dt, now);
+      if (t >= END + REVEAL) return finish();
+      if (inside(t, T.earth)) drawEarthScene(t);
+      else if (inside(t, T.city)) drawCityScene(t);
+      else if (inside(t, T.alley)) drawAlleyScene(t);
+      else drawRoomScene(Math.min(t, END + REVEAL));
+      if (inside(t, T.clouds)) drawClouds(c, W, H, prog(t, T.clouds));
+      if (t >= END) reveal(t - END);
+      if (t >= T.slam && !slammed) {
+        slammed = true;
+        sound.thump();
+      }
+      if (sound.on) {
+        const out = inside(t, T.alley);
+        sound.set('pad', t < T.alley[0] ? 0.05 * (1 - prog(t, [9.6, 10.2])) : 0);
+        sound.set('rain', out && t < T.slam ? 0.05 : 0);
+        sound.set('hum', out && t < T.slam ? 0.12 : 0);
+        if (t >= T.room[0]) sound.tune();
+      }
     } catch (err) {
-      // 描画で何か起きても、ページが使えなくならないようにすぐ終える
+      // 何か起きても、ページが使えなくならないようにすぐ終える
       console.error(err);
       return finish();
     }
     raf = requestAnimationFrame(frame);
   }
 
-  function draw(t: number, dt: number, now: number) {
-    const inStreet = t < 7.35;
-    const inRoom = t >= 7.3 && t < TL.reveal[0];
-    street.style.display = inStreet ? '' : 'none';
-    room.style.display = inRoom ? '' : 'none';
-    stage.style.display = t < TL.reveal[0] ? '' : 'none';
-    // テレビに飛び込むときだけ、拡大を画像として扱って軽くする
-    stage.style.willChange = t > TL.dive[0] ? 'transform' : 'auto';
-    const tick = now - staticTick > 33; // 砂嵐は 30 コマ/秒で十分
-    if (tick) staticTick = now;
-
-    // 黒の幕
-    let b = 0;
-    if (t < 1.1) b = 1 - prog(t, [0, 1.1]);
-    else if (t < 7.4) b = prog(t, TL.black);
-    else if (t < TL.roomIn[1]) b = 1 - prog(t, TL.roomIn);
-    black.style.opacity = b.toFixed(3);
-
-    // カメラ（+ ドアが閉まったときの揺れ）
-    const c = camera(t);
-    const base = Math.max(vw / 1600, Math.min(vh / 900, vw / 760));
-    const S = base * c.z;
-    let sx = 0;
-    let sy = 0;
-    const sh = prog(t, [TL.slam, TL.slam + 0.3]);
-    if (!reduce && sh > 0 && sh < 1) {
-      const k = (1 - sh) * 7;
-      sx = (Math.random() - 0.5) * k;
-      sy = (Math.random() - 0.5) * k;
-    }
-    stage.style.transform = `translate(${(vw / 2 - c.x * S + sx).toFixed(2)}px,${(vh / 2 - c.y * S + sy).toFixed(2)}px) scale(${S.toFixed(5)})`;
-
-    if (inStreet) {
-      signs.forEach((el, i) => el.setAttribute('opacity', flick(t, i * 1.9).toFixed(3)));
-      const pose = figurePose(t);
-      drawFigure(pose, t);
-      if (pose && pose.swing > 0) {
-        const n = Math.floor(pose.phase / Math.PI);
-        if (n !== lastStep) {
-          lastStep = n;
-          const metal = t < TL.climb[1]; // 鉄の外階段の足音
-          sound.burst(metal ? 2600 : 900, 'bandpass', 0.07, metal ? 0.35 : 0.22);
-        }
-      }
-      // ドア：開く → 入る → 閉まる
-      const open = prog(t, TL.doorOpen);
-      const close = prog(t, [TL.slam - 0.08, TL.slam]);
-      const w = 1 - 0.85 * open * (1 - close);
-      door.setAttribute('transform', `translate(800,0) scale(${w.toFixed(3)},1) translate(-800,0)`);
-      doorLight.setAttribute('opacity', (0.55 * open * (1 - close)).toFixed(3));
-      if (t >= TL.slam && !slammed) {
-        slammed = true;
-        sound.thump();
-      }
-      // 部屋のテレビの光が窓に映り、ドアの上の ON AIR が点く
-      win2.setAttribute('opacity', (prog(t, [6.55, 6.9]) * (0.28 + 0.12 * Math.sin(t * 40))).toFixed(3));
-      onairSmall.setAttribute('opacity', (0.25 + 0.75 * prog(t, [6.6, 6.75]) * flick(t, 4)).toFixed(3));
-    }
-    drawRain(dt, inStreet && !reduce ? 1 - prog(t, [6.6, 7.2]) : 0);
-
-    if (inRoom) {
-      spill.setAttribute('opacity', (0.75 * flick(t, 0.7)).toFixed(3));
-      outside.forEach((el, i) => el.setAttribute('opacity', flick(t, i * 2.3).toFixed(3)));
-      tvglow.setAttribute('opacity', (0.75 + Math.random() * 0.25).toFixed(3));
-      needle.setAttribute('transform', `translate(${(Math.sin(t * 1.3) * 18 + Math.sin(t * 7) * 2).toFixed(2)},0)`);
-      dialLight.setAttribute('opacity', (0.45 + Math.random() * 0.12).toFixed(3));
-      waves.setAttribute('opacity', (0.25 + 0.25 * Math.sin(t * 9)).toFixed(3));
-      if (tick) noise(tvX, tvC.width, tvC.height, t);
-    }
-
-    // 画面いっぱいの砂嵐 → トップページへ
-    let fs = prog(t, TL.fullStatic);
-    if (t >= TL.reveal[0]) {
-      root.classList.add('is-thin');
-      const r = prog(t, TL.reveal);
-      fs = 1 - easeInOut(r);
-      if (r > 0.35 && r < 0.42) fs = Math.max(fs, 0.85); // 一瞬ぶり返す
-      if (r > 0.62 && r < 0.66) fs = Math.max(fs, 0.55);
-      const j = fs > 0.1 && !reduce ? (Math.random() - 0.5) * 14 * fs : 0;
-      const filter = `contrast(${(1 + fs * 0.6).toFixed(2)}) brightness(${(1 + fs * 0.5).toFixed(2)}) saturate(${(1 - fs * 0.7).toFixed(2)})`;
-      others.forEach((el) => {
-        el.style.transform = j ? `translateX(${j.toFixed(1)}px)` : '';
-        el.style.filter = filter;
-      });
-      scan.style.opacity = ((0.15 + 0.85 * fs) * (1 - prog(t, [14.0, 14.4]))).toFixed(3);
-    } else {
-      root.classList.remove('is-thin');
-      scan.style.opacity = (fs * 0.9).toFixed(3);
-    }
-    fullC.style.opacity = fs.toFixed(3);
-    if (fs > 0.01 && tick) noise(fullX, fullC.width, fullC.height, t, 1.1);
-
-    if (sound.on) {
-      sound.set('rain', inStreet ? 0.05 * (1 - prog(t, [6.4, 6.6])) : 0);
-      sound.set('hum', inStreet ? 0.12 : 0);
-      sound.set('radio', inRoom ? 0.05 + 0.02 * Math.sin(t * 3) : 0);
-      sound.set('tv', t >= 7.4 ? 0.04 + 0.22 * Math.max(prog(t, TL.dive), fs) : 0);
-    }
+  // ジュークボックスの光の中から、ドットが抜けていくようにページが現れる
+  function reveal(r: number) {
+    root.classList.add('is-thin');
+    const p = ease(clamp(r / REVEAL));
+    c.globalCompositeOperation = 'destination-out';
+    dither(c, p * 1.05, '#000');
+    c.globalCompositeOperation = 'source-over';
+    const g = 1 - p;
+    others.forEach((el) => {
+      el.style.filter = g > 0.02 ? `brightness(${(1 + g * 0.6).toFixed(2)}) saturate(${(1 + g).toFixed(2)})` : '';
+    });
   }
 
   // ---- 開始と終了 ----
@@ -474,7 +328,6 @@ export function runOpening(root: HTMLElement) {
     document.removeEventListener('keydown', onKey);
     others.forEach((el) => {
       el.inert = false;
-      el.style.transform = '';
       el.style.filter = '';
     });
     document.documentElement.classList.remove('op-play');
@@ -492,10 +345,7 @@ export function runOpening(root: HTMLElement) {
     if (done || root.classList.contains('is-leaving')) return;
     root.classList.add('is-leaving');
     cancelAnimationFrame(raf);
-    others.forEach((el) => {
-      el.style.transform = '';
-      el.style.filter = '';
-    });
+    others.forEach((el) => (el.style.filter = ''));
     root.addEventListener('transitionend', finish, { once: true });
     setTimeout(finish, 600); // transitionend が来ない環境の保険
   }
