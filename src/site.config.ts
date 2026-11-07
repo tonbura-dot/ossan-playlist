@@ -50,7 +50,7 @@ export const SITE = {
     repo: 'tonbura-dot/ossan-playlist',
     repoId: 'R_kgDOVEQMSg',
     category: 'Announcements', // コメントをためる Discussions のカテゴリー
-    categoryId: '',
+    categoryId: 'DIC_kwDOVEQMSs4DI1oA',
   },
 
   // 「ランダムに1本読む」ボタンを出す記事数のしきい値
