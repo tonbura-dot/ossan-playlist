@@ -1,0 +1,120 @@
+---
+// トップページのアクセスカウンター（昔のホームページ風）。
+// 数は無料の外部サービス Abacus（https://abacus.jasoncameron.dev）に預けている。登録は不要。
+// 同じブラウザからは1日1回だけ数える（2回目以降は数を見るだけ）。
+// 手元（localhost）で見ているときは数えない。取れなかったときはカウンターごと出さない。
+import { SITE } from '../site.config';
+
+const { namespace, key, digits } = SITE.counter;
+---
+{namespace && (
+  <div class="counter" id="access-counter" data-ns={namespace} data-key={key} data-digits={digits} hidden>
+    <p class="counter__label" aria-hidden="true">LISTENERS</p>
+    <p class="counter__digits" aria-hidden="true">
+      {Array.from({ length: digits }, () => <span>0</span>)}
+    </p>
+    <p class="counter__text">あなたは <b class="counter__n">-</b> 人目のリスナーです</p>
+  </div>
+)}
+
+<style>
+  .counter {
+    display: grid;
+    justify-items: center;
+    gap: 0.45rem;
+    margin-top: clamp(1.6rem, 4vw, 2.2rem);
+  }
+  .counter[hidden] { display: none; }
+  .counter p { margin: 0; }
+  .counter__label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.32em;
+    padding-left: 0.32em;
+    color: var(--cool);
+    text-shadow: 0 0 6px rgb(127 231 255 / 0.55);
+  }
+  /* 数字はラジオの周波数表示のような、黒い窓に光る数字 */
+  .counter__digits {
+    display: flex;
+    gap: 3px;
+    padding: 5px;
+    background: #050406;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: inset 0 0 12px rgb(0 0 0 / 0.9), 0 0 18px rgb(255 92 138 / 0.12);
+  }
+  .counter__digits span {
+    display: grid;
+    place-items: center;
+    width: 1.55rem;
+    height: 2.1rem;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    border-radius: 4px;
+    background: linear-gradient(#141016, #0b090d 48%, #141016 52%, #0b090d);
+    color: #3a2a30; /* まだ光っていない桁（先頭の0） */
+  }
+  .counter__digits span.is-lit {
+    color: var(--tube);
+    text-shadow: 0 0 2px #fff, 0 0 6px var(--accent), 0 0 14px var(--accent);
+  }
+  .counter__text { font-size: 0.82rem; color: var(--muted); }
+  .counter__n {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--accent);
+    margin-inline: 0.1em;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .counter:not([hidden]) .counter__digits span.is-lit { animation: counter-on 0.9s linear both; }
+  }
+  @keyframes counter-on {
+    0%, 20%, 40% { opacity: 0.2; text-shadow: none; }
+    10%, 30%, 100% { opacity: 1; }
+  }
+</style>
+
+<script>
+  const box = document.getElementById('access-counter');
+  if (box) {
+    const { ns, key } = box.dataset;
+    const digits = Number(box.dataset.digits) || 7;
+    const api = 'https://abacus.jasoncameron.dev';
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+
+    // 今日（日本時間）すでに数えたかどうかを、このブラウザに覚えておく
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+    const store = 'ossan-counter-day';
+    let counted = local;
+    try { counted = counted || localStorage.getItem(store) === today; } catch {}
+
+    const call = (op: 'hit' | 'get') =>
+      fetch(`${api}/${op}/${ns}/${key}`).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
+
+    (counted ? call('get').catch(() => (local ? Promise.reject() : call('hit'))) : call('hit'))
+      .then((d: { value?: number }) => {
+        if (typeof d.value !== 'number') return;
+        if (!counted) {
+          try { localStorage.setItem(store, today); } catch {}
+        }
+        const s = String(d.value).padStart(digits, '0');
+        const cells = box.querySelectorAll<HTMLElement>('.counter__digits span');
+        // 桁が足りなくなったら、窓を広げる
+        const wrap = box.querySelector('.counter__digits')!;
+        for (let i = cells.length; i < s.length; i++) wrap.appendChild(document.createElement('span'));
+        const lit = s.length - String(d.value).length;
+        wrap.querySelectorAll<HTMLElement>('span').forEach((c, i) => {
+          c.textContent = s[i];
+          c.classList.toggle('is-lit', i >= lit);
+          c.style.animationDelay = `${(i - lit) * 0.08}s`;
+        });
+        box.querySelector('.counter__n')!.textContent = d.value.toLocaleString('ja-JP');
+        box.hidden = false;
+      })
+      .catch(() => {});
+  }
+</script>

@@ -25,6 +25,15 @@ export const SITE = {
     goatcounter: '',
   },
 
+  // トップページのアクセスカウンター（無料の Abacus を使う。登録不要）。
+  // namespace を空にするとカウンターを出さない。数は namespace と key の組み合わせごとに別々。
+  // 半年まったく見られないと数が消えるので注意。
+  counter: {
+    namespace: 'ik-playlist.tonbura-dot',
+    key: 'top',
+    digits: 7, // 表示する桁数（足りなくなったら自動で増える）
+  },
+
   // 「ランダムに1本読む」ボタンを出す記事数のしきい値
   randomButtonMinPosts: 5,
 } as const;

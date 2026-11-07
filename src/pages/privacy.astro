@@ -17,7 +17,7 @@ import { url } from '../lib/posts';
       <p>フォームの送信には、外部サービスの Formspree（Formspree, Inc.）を利用しています。送信された内容は Formspree のサーバーを経由して運営者に届きます。Formspree での取り扱いについては、同社のプライバシーポリシーをご確認ください。</p>
 
       <h2>アクセス解析について</h2>
-      {!SITE.analytics.gaId && !SITE.analytics.goatcounter && (
+      {!SITE.analytics.gaId && !SITE.analytics.goatcounter && !SITE.counter.namespace && (
         <p>当サイトは、現在アクセス解析ツールを利用していません。今後利用する場合は、利用するツールの名前と、取得する情報の内容をこのページに記載します。</p>
       )}
       {SITE.analytics.gaId && (
@@ -28,6 +28,9 @@ import { url } from '../lib/posts';
       )}
       {SITE.analytics.goatcounter && (
         <p>当サイトは、訪問者数を数えるために「GoatCounter」も利用しています。GoatCounter は Cookie を使わず、個人を特定できる情報も保存しません。数えた合計の人数は、各ページの下に表示しています。</p>
+      )}
+      {SITE.counter.namespace && (
+        <p>トップページのアクセスカウンターには、外部の無料サービス「Abacus」を利用しています。Abacus に送るのは「トップページが開かれた」という合図だけで、Cookie や個人を特定できる情報は送りません。同じブラウザからは1日1回だけ数えるために、その日に数えたかどうかをブラウザの保存領域（localStorage）に記録します。</p>
       )}
 
       <h2>広告について</h2>

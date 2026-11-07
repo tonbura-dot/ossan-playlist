@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { SITE } from '../site.config';
 import { url } from '../lib/posts';
+import BgmPlayer from '../components/BgmPlayer.astro';
 
 interface Props {
   title?: string;
@@ -123,6 +124,7 @@ skyline += ' L1600,120 Z';
         <p class="site-footer__copy">© {new Date().getFullYear()} {SITE.author}</p>
       </div>
     </footer>
+    <BgmPlayer />
   </body>
 </html>
 

@@ -1,0 +1,141 @@
+---
+// サイトのBGM（ikの曲）。ブラウザは音の自動再生を止めるので、右下のボタンで流す。
+// 流しているかどうかと再生位置はこの端末に覚えておき、ページを移ってもそこから続ける。
+import { url } from '../lib/posts';
+---
+<div class="bgm" id="bgm">
+  <audio class="bgm__audio" src={url('audio/ik-track-vol1.mp3')} preload="none" loop></audio>
+  <button class="bgm__btn" type="button" aria-pressed="false" aria-label="BGMを流す">
+    <span class="bgm__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="bgm__label">BGM <span class="bgm__state">OFF</span></span>
+  </button>
+</div>
+
+<script>
+  const KEY = 'ik-bgm';
+  const root = document.getElementById('bgm');
+  const audio = root?.querySelector('audio');
+  const btn = root?.querySelector('button');
+  const stateEl = root?.querySelector('.bgm__state');
+
+  if (root && audio && btn && stateEl) {
+    type Saved = { on: boolean; t: number };
+    const load = (): Saved => {
+      try {
+        return { on: false, t: 0, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+      } catch {
+        return { on: false, t: 0 };
+      }
+    };
+    const save = (s: Saved) => {
+      try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+    };
+
+    const show = (playing: boolean) => {
+      root.classList.toggle('is-on', playing);
+      btn.setAttribute('aria-pressed', String(playing));
+      btn.setAttribute('aria-label', playing ? 'BGMを止める' : 'BGMを流す');
+      stateEl.textContent = playing ? 'ON' : 'OFF';
+    };
+
+    audio.volume = 0.5;
+    const saved = load();
+    // 再生位置は読み込みが済んでから合わせる
+    audio.addEventListener('loadedmetadata', () => {
+      if (saved.t > 0 && saved.t < audio.duration) audio.currentTime = saved.t;
+    }, { once: true });
+
+    const play = () => {
+      audio.preload = 'auto';
+      return audio.play().then(() => { show(true); save({ on: true, t: audio.currentTime }); });
+    };
+    const stop = () => {
+      audio.pause();
+      show(false);
+      save({ on: false, t: audio.currentTime });
+    };
+
+    btn.addEventListener('click', () => {
+      if (audio.paused) play().catch(() => show(false));
+      else stop();
+    });
+
+    // 前のページで流していたら続きから。自動再生が止められたら、最初にどこか触ったときに流す
+    if (saved.on) {
+      play().catch(() => {
+        root.classList.add('is-waiting');
+        const resume = (e: Event) => {
+          if (btn.contains(e.target as Node)) return; // ボタンを押したならそちらに任せる
+          root.classList.remove('is-waiting');
+          play().catch(() => {});
+        };
+        for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, resume, { once: true, capture: true });
+        btn.addEventListener('click', () => root.classList.remove('is-waiting'), { once: true });
+      });
+    }
+
+    // ページを移る直前などに位置を覚えておく
+    const remember = () => { if (!audio.paused) save({ on: true, t: audio.currentTime }); };
+    audio.addEventListener('timeupdate', remember);
+    window.addEventListener('pagehide', remember);
+  }
+</script>
+
+<style>
+  .bgm {
+    position: fixed;
+    right: max(0.9rem, env(safe-area-inset-right));
+    bottom: max(0.9rem, env(safe-area-inset-bottom));
+    z-index: 20;
+  }
+  .bgm__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.9rem 0.5rem 0.75rem;
+    border: 1px solid rgb(127 231 255 / 0.35);
+    border-radius: 999px;
+    background: rgb(8 7 10 / 0.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--muted);
+    font-family: var(--font-neon);
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .bgm__btn:hover { color: var(--ink); border-color: var(--cool); }
+  .bgm__btn:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+  .bgm__state { color: var(--muted); }
+
+  .bgm__eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .bgm__eq i { width: 3px; height: 4px; border-radius: 1px; background: var(--muted); }
+
+  .bgm.is-on .bgm__btn {
+    color: var(--tube);
+    border-color: var(--accent);
+    box-shadow: var(--glow), var(--shadow);
+  }
+  .bgm.is-on .bgm__state { color: var(--tube); text-shadow: var(--neon-pink); }
+  .bgm.is-on .bgm__eq i { background: var(--cool); box-shadow: 0 0 6px var(--cool); height: 10px; }
+  .bgm.is-on .bgm__eq i:nth-child(2) { height: 14px; }
+  .bgm.is-on .bgm__eq i:nth-child(3) { height: 7px; }
+  .bgm.is-on .bgm__eq i:nth-child(4) { height: 12px; }
+
+  /* 続きを流す準備ができていて、どこか触るのを待っているとき */
+  .bgm.is-waiting .bgm__btn { border-color: var(--accent); color: var(--warm); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bgm.is-on .bgm__eq i { animation: bgm-eq 0.9s ease-in-out infinite alternate; }
+    .bgm.is-on .bgm__eq i:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.3s; }
+    .bgm.is-on .bgm__eq i:nth-child(3) { animation-duration: 1.1s; animation-delay: -0.6s; }
+    .bgm.is-on .bgm__eq i:nth-child(4) { animation-duration: 0.8s; animation-delay: -0.2s; }
+    .bgm.is-waiting .bgm__btn { animation: bgm-wait 1.6s ease-in-out infinite; }
+  }
+  @keyframes bgm-eq { from { height: 3px; } to { height: 14px; } }
+  @keyframes bgm-wait { 50% { box-shadow: var(--glow), var(--shadow); } }
+
+  @media print { .bgm { display: none; } }
+</style>
