@@ -34,6 +34,20 @@ export const SITE = {
     digits: 7, // 表示する桁数（足りなくなったら自動で増える）
   },
 
+  // 記事ごとのコメント欄（無料の giscus を使う。コメントはこのリポジトリの GitHub Discussions に保存される）。
+  // 書き込むには GitHub アカウントでのログインが必要。
+  // 使えるようにする手順:
+  //   1. リポジトリの Settings → General → Features で「Discussions」にチェックを入れる
+  //   2. https://github.com/apps/giscus から giscus アプリをこのリポジトリにインストールする
+  //   3. https://giscus.app で表示される data-category-id を categoryId に入れる
+  // categoryId が空のままだとコメント欄は「準備中」表示になる。
+  comments: {
+    repo: 'tonbura-dot/ossan-playlist',
+    repoId: 'R_kgDOVEQMSg',
+    category: 'Announcements', // コメントをためる Discussions のカテゴリー
+    categoryId: '',
+  },
+
   // 「ランダムに1本読む」ボタンを出す記事数のしきい値
   randomButtonMinPosts: 5,
 } as const;
