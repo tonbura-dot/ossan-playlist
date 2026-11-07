@@ -16,6 +16,10 @@ const posts = defineCollection({
       category: z.string(),
       image: image().optional(),
       description: z.string().optional(),
+      // 検索結果に出すタイトル・説明（ページ上の見出しやリード文はそのまま）。
+      // 書かなければ title / description を使う
+      seoTitle: z.string().optional(),
+      seoDescription: z.string().optional(),
       // true にすると下書き。本番のサイトには出さない（npm run dev では見える）
       draft: z.boolean().optional(),
     }),

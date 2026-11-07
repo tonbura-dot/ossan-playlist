@@ -8,12 +8,29 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  /** 記事の公開日。あると検索エンジン向けに「記事」として日付を伝える */
+  published?: Date;
+  /** true で検索結果に出さない */
+  noindex?: boolean;
 }
 
-const { title, description = SITE.description, image } = Astro.props;
+const { title, description = SITE.description, image, published, noindex } = Astro.props;
 const fullTitle = title ? `${title}｜${SITE.name}` : `${SITE.name}｜${SITE.catch}`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const path = Astro.url.pathname;
+// Google に「ブログ記事」だと伝える構造化データ
+const articleLd = published && {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: published.toISOString(),
+  author: { '@type': 'Person', name: SITE.author },
+  publisher: { '@type': 'Person', name: SITE.author },
+  mainEntityOfPage: canonical.href,
+  inLanguage: SITE.lang,
+  ...(image && { image: new URL(image, Astro.site).href }),
+};
 const nav = [
   { href: url('posts/'), label: '記事' },
   { href: url('profile/'), label: 'プロフィール' },
@@ -48,6 +65,9 @@ skyline += ' L1600,120 Z';
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    {SITE.googleSiteVerification && <meta name="google-site-verification" content={SITE.googleSiteVerification} />}
+    <link rel="sitemap" type="application/xml" href={url('sitemap.xml')} />
     <link rel="icon" href={url('favicon.svg')} type="image/svg+xml" />
     <meta name="theme-color" content="#08070a" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -60,6 +80,8 @@ skyline += ' L1600,120 Z';
     <meta property="og:url" content={canonical} />
     {image && <meta property="og:image" content={new URL(image, Astro.site)} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    {published && <meta property="article:published_time" content={published.toISOString()} />}
+    {articleLd && <script type="application/ld+json" set:html={JSON.stringify(articleLd)} />}
     {SITE.analytics.gaId && (
       <>
         <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${SITE.analytics.gaId}`}></script>
