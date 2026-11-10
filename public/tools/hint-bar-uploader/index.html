@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="description" content="hint-bar-uploader: a private tool that uploads the owner's own videos to the YouTube channel ヒント屋のヒント。">
+<title>hint-bar-uploader</title>
+<style>
+  body { font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; line-height: 1.8; color: #222; background: #fff; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 10px; width: fit-content; }
+  .brand svg { width: 40px; height: 28px; }
+  .brand b { font-size: 1.05rem; }
+  h1 { font-size: 1.8rem; margin: 24px 0 4px; }
+  h2 { font-size: 1.15rem; margin-top: 2em; }
+  ol li { margin: .3em 0; }
+  code { background: #f3f3f3; padding: 1px 6px; border-radius: 4px; }
+  footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: .95rem; }
+  a { color: #0b57d0; }
+</style>
+</head>
+<body>
+<div class="brand">
+  <svg viewBox="0 0 40 28" aria-hidden="true"><rect width="40" height="28" rx="7" fill="#FF0000"/><path d="M16 8 L27 14 L16 20 Z" fill="#fff"/></svg>
+  <b>Uses YouTube API Services</b>
+</div>
+
+<h1>hint-bar-uploader</h1>
+<p lang="en">A private upload tool for the YouTube channel <b>ヒント屋のヒント。</b></p>
+
+<h2>What it does</h2>
+<p>hint-bar-uploader is a command-line script used only by the channel owner. It uploads videos that the owner produced, together with the prepared title, description, tags and thumbnail, to the owner's own YouTube channel.</p>
+<ol>
+  <li>Upload the finished video as <b>private</b> (<code>videos.insert</code>) and set its thumbnail (<code>thumbnails.set</code>).</li>
+  <li>The owner reviews the private video in YouTube Studio.</li>
+  <li>Only after the owner approves it, the video is made public or scheduled (<code>videos.update</code>).</li>
+</ol>
+<p>It also reads the owner's own channel info (<code>channels.list</code>, mine=true) to confirm it is connected to the right channel. It never accesses other users' data and is not offered to anyone else.</p>
+
+<h2>Sign-in</h2>
+<p>The owner signs in once with Google (OAuth 2.0). Access can be revoked at any time in <a href="https://security.google.com/settings/security/permissions">Google account permissions</a>.</p>
+
+<footer>
+  <a href="../../privacy/youtube/">Privacy Policy</a> ·
+  <a href="../../terms/youtube/">Terms of Service</a> ·
+  <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a> ·
+  <a href="https://policies.google.com/privacy">Google Privacy Policy</a>
+</footer>
+</body>
+</html>
